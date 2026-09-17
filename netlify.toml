@@ -1,0 +1,7 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions."weekly-hours-email"]
+  # Sunday evening, Central time (accounts roughly for DST — see note in the function file)
+  schedule = "0 2 * * 1"

@@ -1,0 +1,10 @@
+{
+  "name": "style-studio-hours",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/functions": "^2.8.1",
+    "@supabase/supabase-js": "^2.45.0",
+    "resend": "^4.0.0"
+  }
+}

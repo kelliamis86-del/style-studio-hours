@@ -1,0 +1,15 @@
+{
+  "name": "Style Studio Hours",
+  "short_name": "Studio Hours",
+  "description": "Hours and billing tracker for Style Studio Interiors",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#151319",
+  "theme_color": "#151319",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

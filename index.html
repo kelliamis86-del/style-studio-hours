@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Studio Hours">
+<meta name="theme-color" content="#151319">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Style Studio Hours</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ink:#151319; --paper:#F6F2EC; --paper-dim:#5a5560; --paper-faint:#9d97a8;
+    --pink:#FF2E7E; --pink-dark:#B4185A; --blue:#3D6BFF; --blue-dark:#1E3FBF;
+    --card-dark:#211f28; --card-border:#3a3742; --input-border:#d8d2c6;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --display:'Archivo Black','Arial Black',sans-serif;
+    --body:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ background:var(--ink); margin:0; }
+  html{ height:100%; }
+  body{
+    font-family:var(--body); color:var(--paper); margin:0;
+    padding-inline:20px;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{ max-width:780px; margin:0 auto; }
+  h1{ margin:0; }
+  button{ font-family:inherit; cursor:pointer; }
+  input,textarea{ font-family:inherit; font-size:16px; }
+  .eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:2px; color:var(--pink); margin-bottom:6px; }
+  .title{ font-family:var(--display); font-size:clamp(26px,5vw,44px); line-height:1; }
+  .headerRow{
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;
+    border-bottom:3px solid var(--paper); padding-bottom:20px; padding-top:28px;
+  }
+  .personTabs{ display:flex; gap:8px; }
+  .personBtn{
+    font-family:var(--mono); font-size:14px; font-weight:600; padding:10px 20px;
+    border:2px solid var(--paper); background:transparent; color:var(--paper); border-radius:2px;
+  }
+  .personBtn.active{ background:var(--paper); color:var(--ink); }
+  .syncPill{
+    font-family:var(--mono); font-size:10px; letter-spacing:1px; color:var(--paper-faint);
+    margin-top:10px; display:flex; align-items:center; gap:6px;
+  }
+  .syncDot{ width:6px; height:6px; border-radius:50%; background:#4caf7d; }
+  .syncDot.saving{ background:#e0a92b; }
+  .syncDot.error{ background:var(--pink); }
+  .statStrip{ display:flex; gap:1px; margin-top:14px; background:var(--paper); border-radius:4px; overflow:hidden; }
+  .statBlock{ flex:1; background:var(--ink); color:var(--paper); padding:14px 14px; }
+  .statLabel{ font-family:var(--mono); font-size:10px; color:var(--paper-faint); letter-spacing:1px; margin-bottom:4px; }
+  .statValue{ font-family:var(--display); font-size:22px; }
+  .statValue .unit{ font-family:var(--mono); font-size:12px; margin-left:3px; }
+  .errorBanner{
+    margin-top:16px; padding:10px 16px; background:#4a1a1a; border:1px solid var(--pink);
+    font-family:var(--mono); font-size:13px; border-radius:3px;
+  }
+  .section{ margin-top:28px; }
+  .tabRow{ display:flex; gap:6px; margin-bottom:14px; }
+  .tabBtn{
+    font-family:var(--mono); font-size:12px; font-weight:600; padding:9px 14px; border-radius:3px;
+    border:1.5px solid #4a465a; background:transparent; color:var(--paper-faint);
+  }
+  .tabBtn.active{ color:var(--ink); }
+  .addRow{ display:flex; gap:8px; margin-bottom:18px; }
+  .textInput{
+    width:100%; padding:10px 12px; font-family:var(--body); font-size:16px;
+    border:1.5px solid var(--input-border); border-radius:3px; background:#fff; color:var(--ink);
+  }
+  .btnPrimary{
+    font-family:var(--mono); font-weight:700; font-size:13px; padding:11px 18px; color:var(--ink);
+    border:none; border-radius:3px; white-space:nowrap;
+  }
+  .btnSmall{
+    font-family:var(--mono); font-weight:600; font-size:11px; padding:7px 10px; border-radius:3px;
+    white-space:nowrap; background:transparent; border:none;
+  }
+  .emptyNote{ font-family:var(--mono); font-size:13px; color:var(--paper-faint); padding:20px 4px; }
+  .jobCard{ background:var(--paper); color:var(--ink); border-radius:4px; display:flex; overflow:hidden; margin-bottom:10px; }
+  .jobStripe{ width:8px; flex:none; }
+  .jobBody{ flex:1; padding:14px 16px; text-align:left; background:none; border:none; color:var(--ink); font:inherit; min-width:0; }
+  .jobTopRow{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .jobName{ font-weight:700; font-size:16px; }
+  .jobMeta{ font-family:var(--mono); font-size:11px; color:var(--paper-dim); margin-top:4px; }
+  .jobArchiveBtn{ padding:0 14px; background:transparent; border:none; color:#8a8494; font-family:var(--mono); font-weight:600; font-size:11px; flex:none; }
+  .backLink{ background:none; border:none; color:var(--paper-faint); font-family:var(--mono); font-size:13px; padding:0; margin-bottom:20px; }
+  .detailTitleRow{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+  .swatch{ width:12px; height:12px; border-radius:2px; flex:none; }
+  .detailSub{ font-family:var(--mono); font-size:12px; color:var(--paper-faint); margin-bottom:20px; }
+  .statCardRow{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .statCard{ background:var(--paper); color:var(--ink); border-radius:4px; padding:10px 16px; min-width:110px; flex:1; }
+  .statCardLabel{ font-family:var(--mono); font-size:10px; color:var(--paper-dim); letter-spacing:1px; margin-bottom:4px; }
+  .statCardValue{ font-family:var(--display); font-size:22px; }
+  .quotedInput{
+    width:84px; padding:3px 6px; font-family:var(--display); font-size:19px;
+    border:1.5px solid var(--input-border); border-radius:3px; background:#fff; color:var(--ink);
+  }
+  .overQuoted{ font-family:var(--mono); font-size:12px; color:var(--pink); margin-bottom:16px; }
+  .actionsRow{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:10px; }
+  .historyItem{ background:var(--card-dark); border-radius:4px; padding:10px 12px; margin-bottom:8px; }
+  .historyTopRow{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .historyNotes{
+    width:100%; margin-top:8px; min-height:100px; padding:10px; font-family:var(--mono);
+    font-size:12px; line-height:1.5; border:1px solid var(--card-border); border-radius:4px;
+    background:#1a1820; color:#c9c4d0; resize:vertical;
+  }
+  .removeLink{ background:none; border:none; color:var(--paper-faint); font-size:11px; text-decoration:underline; padding:0; }
+  .quickRow{ display:flex; gap:8px; align-items:flex-end; margin-bottom:24px; flex-wrap:wrap; }
+  .fieldLabel{ display:block; font-family:var(--mono); font-size:11px; letter-spacing:1px; color:var(--paper-dim); margin-bottom:6px; }
+  .dateInput,.hoursInput{
+    padding:10px 12px; font-family:var(--body); font-size:16px; border:1.5px solid var(--input-border);
+    border-radius:3px; background:#fff; color:var(--ink);
+  }
+  .entryList{ margin-bottom:28px; }
+  .entryRow{
+    background:var(--card-dark); border-radius:4px; padding:9px 12px; display:flex; justify-content:space-between;
+    align-items:center; font-family:var(--mono); font-size:12px; margin-bottom:6px; gap:10px;
+  }
+  .notesHeaderRow{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; }
+  .notesLabel{ font-family:var(--mono); font-size:11px; letter-spacing:1px; color:var(--paper-faint); }
+  .billingNotes{
+    width:100%; min-height:240px; padding:16px; font-family:var(--mono); font-size:13px;
+    line-height:1.6; border-radius:4px; background:var(--paper); color:var(--ink); resize:vertical;
+  }
+  .totalBar{
+    margin-top:18px; background:var(--paper); color:var(--ink); border-radius:4px; padding:14px 18px;
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+  }
+  .totalBarLabel{ font-family:var(--mono); font-size:12px; letter-spacing:0.5px; }
+  .totalBarSub{ font-size:10px; color:var(--paper-dim); margin-top:2px; font-weight:400; }
+  .totalBarValue{ font-family:var(--display); font-size:25px; white-space:nowrap; }
+  .totalBarValue .unit{ font-family:var(--mono); font-size:13px; margin-left:4px; }
+  .weekCard{
+    background:var(--paper); color:var(--ink); border-radius:4px; padding:14px 16px; text-align:left;
+    border:none; width:100%; display:block; margin-bottom:10px; font:inherit;
+  }
+  .weekTopRow{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .weekName{ font-weight:700; font-size:16px; }
+  .weekArrow{ font-family:var(--mono); font-size:13px; color:var(--blue-dark); white-space:nowrap; }
+  .weekRange{ font-family:var(--mono); font-size:11px; color:var(--paper-dim); margin-top:4px; }
+  .yearCard{
+    background:var(--paper); color:var(--ink); border-radius:4px; padding:14px 16px;
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;
+  }
+  .dayCard{ background:var(--paper); color:var(--ink); border-radius:4px; padding:14px 16px; margin-bottom:10px; }
+  .dayTopRow{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; }
+  .dayName{ font-weight:700; font-size:15px; }
+  .dayDate{ font-family:var(--mono); font-size:11px; color:#8a8494; margin-left:8px; }
+  .dayHoursInput{
+    width:74px; padding:7px 8px; font-family:var(--mono); font-size:16px;
+    border:1.5px solid var(--input-border); border-radius:3px; background:#fff; color:var(--ink); text-align:right;
+  }
+  .dayJobsInput{
+    width:100%; min-height:58px; padding:8px 10px; font-family:var(--body); font-size:16px;
+    border:1.5px solid #e3ddd0; border-radius:3px; background:#fff; color:var(--ink); resize:vertical;
+  }
+  .expenseCard{ background:var(--paper); color:var(--ink); border-radius:4px; padding:14px 16px; }
+  .expenseNotes{
+    width:100%; min-height:80px; padding:8px 10px; font-family:var(--body); font-size:16px;
+    border:1.5px solid #e3ddd0; border-radius:3px; background:#fff; color:var(--ink); resize:vertical; margin-bottom:10px;
+  }
+  .expenseAmountRow{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .expenseAmountInput{
+    width:96px; padding:7px 8px; font-family:var(--mono); font-size:16px;
+    border:1.5px solid var(--input-border); border-radius:3px; background:#fff; color:var(--ink); text-align:right;
+  }
+  .totalsStack{ margin-top:18px; display:flex; flex-direction:column; gap:1px; background:var(--paper); border-radius:4px; overflow:hidden; }
+  .totalsRow{ padding:12px 18px; display:flex; justify-content:space-between; align-items:center; background:var(--paper); color:var(--ink); gap:12px; }
+  .totalsRow.big{ padding:16px 18px; background:var(--ink); color:var(--paper); }
+  .totalsRowLabel{ font-family:var(--mono); font-size:11px; letter-spacing:0.5px; }
+  .totalsRow.big .totalsRowLabel{ font-size:12px; }
+  .totalsRowSub{ font-size:10px; color:var(--paper-dim); margin-top:2px; font-weight:400; letter-spacing:0; }
+  .totalsRow.big .totalsRowSub{ color:var(--paper-faint); }
+  .totalsRowValue{ font-family:var(--display); font-size:18px; white-space:nowrap; }
+  .totalsRow.big .totalsRowValue{ font-size:25px; color:var(--blue); }
+  .centerScreen{ min-height:70vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; }
+  .lockInput{
+    width:200px; padding:12px; font-family:var(--mono); font-size:18px; text-align:center;
+    border:1.5px solid var(--paper); border-radius:3px; background:#fff; color:var(--ink);
+  }
+  .muted{ font-family:var(--mono); font-size:12px; color:var(--paper-faint); }
+  @media (max-width:480px){
+    .headerRow{ flex-direction:column; align-items:flex-start; padding-top:22px; }
+    .statBlock{ padding:12px 10px; }
+    .statValue{ font-size:19px; }
+    .statLabel{ font-size:9px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"><div class="centerScreen"><div class="muted">Loading hours…</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ======== CONFIG ========
+  var SUPABASE_URL = "https://mzfzrolryqyxasjuzdky.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_dSQkQQm3H3RnO_nYJHNhYw_YZQRhzWn";
+  var PASSCODE = "studio45";          // change this to whatever you and Emily prefer
+  var HOURLY_RATE = 45;               // Emily's hourly rate
+  // ========================
+
+  var SECTIONS = ["clients","entries","notes","weeklyHours","weeklyExpenses"];
+  var DEFAULTS = { clients:[], entries:[], notes:{}, weeklyHours:{}, weeklyExpenses:{} };
+
+  var sb = null;
+  var state = { clients:[], entries:[], notes:{}, weeklyHours:{}, weeklyExpenses:{} };
+  var ui = {
+    person:"kelli", showArchived:false, openClientId:null,
+    quickDate:isoDate(new Date()), quickHours:"", copied:false,
+    showHistory:false, historyOpenId:null,
+    openWeekKey:null, weeksBack:8, emilyView:"weeks",
+    error:"", loaded:false, loadFailed:false, unlocked:!PASSCODE,
+    lockError:"", sync:"saved", offlineCopy:false, mirrorAt:null
+  };
+  var saveTimers = {}, lastWrite = {};
+
+  // ---------- storage helpers ----------
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+  // A second copy of everything, kept on this phone. If the database is
+  // unreachable the app still opens and the hours can still be exported.
+  function mirrorSave(){
+    try{ localStorage.setItem("ssh-mirror", JSON.stringify({ at:Date.now(), data:state })); }catch(e){}
+  }
+  function mirrorLoad(){
+    try{
+      var raw=localStorage.getItem("ssh-mirror");
+      return raw?JSON.parse(raw):null;
+    }catch(e){ return null; }
+  }
+
+  // ---------- date helpers ----------
+  function getMonday(d){
+    var date=new Date(d), day=date.getDay(), diff=(day+6)%7;
+    date.setDate(date.getDate()-diff); date.setHours(0,0,0,0); return date;
+  }
+  function isoDate(d){
+    var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0");
+    return y+"-"+m+"-"+dd;
+  }
+  function addDays(d,n){ var nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
+  function parseISO(s){ var p=String(s).split("-"); return new Date(+p[0], (+p[1])-1, +p[2]); }
+  function weekLabel(monday,isCurrent){
+    if(isCurrent) return "This week";
+    return "Week of " + monday.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  }
+  function extractHoursFromText(text){
+    if(!text) return 0;
+    var total=0;
+    String(text).split("\n").forEach(function(line){
+      var cleaned=line.replace(/\b\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?\b/g,"");
+      var m=cleaned.match(/\d+(?:\.\d+)?/g);
+      if(m) m.forEach(function(x){ total+=parseFloat(x); });
+    });
+    return total;
+  }
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function fmt1(n){ return (n||0).toFixed(1); }
+  function fmt2(n){ return (n||0).toFixed(2); }
+  function uid(){ return Math.random().toString(36).slice(2,10); }
+  function noteKey(clientId,periodId){ return clientId+"__"+periodId; }
+
+  // ---------- sync ----------
+  function setSync(s){ ui.sync=s; var el=document.getElementById("syncDot"); var lbl=document.getElementById("syncLabel");
+    if(el){ el.className="syncDot"+(s==="saving"?" saving":s==="error"?" error":""); }
+    if(lbl){ lbl.textContent = s==="saving"?"SAVING…":s==="error"?"NOT SAVED":"SYNCED"; }
+  }
+  function showSaveError(){
+    ui.error="Couldn't save just now — it'll retry when you make the next change.";
+    renderNow();
+    setTimeout(function(){ ui.error=""; renderNow(); },5000);
+  }
+  function coerce(id,val){
+    var def=DEFAULTS[id];
+    if(Array.isArray(def)) return Array.isArray(val)?val:[];
+    return (val && typeof val==="object" && !Array.isArray(val))?val:{};
+  }
+  function saveSection(id){
+    mirrorSave();                       // phone copy updates immediately
+    clearTimeout(saveTimers[id]);
+    setSync("saving");
+    saveTimers[id]=setTimeout(function(){
+      lastWrite[id]=Date.now();
+      sb.from("app_state").upsert({ id:id, data:state[id], updated_at:new Date().toISOString() })
+        .then(function(res){
+          lastWrite[id]=Date.now();
+          if(res.error){ setSync("error"); showSaveError(); } else { setSync("saved"); }
+        }, function(){ setSync("error"); showSaveError(); });
+    },400);
+  }
+  function saveSectionNow(id){
+    lastWrite[id]=Date.now();
+    return sb.from("app_state").upsert({ id:id, data:state[id], updated_at:new Date().toISOString() })
+      .then(function(res){
+        lastWrite[id]=Date.now();
+        if(res.error){ setSync("error"); } else { setSync("saved"); }
+      },function(){ setSync("error"); });
+  }
+
+  // ---------- backup / export / restore ----------
+  function download(filename,text,mime){
+    try{
+      var blob=new Blob([text],{ type:mime||"text/plain" });
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a");
+      a.href=url; a.download=filename; a.style.display="none";
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); if(a.parentNode) a.parentNode.removeChild(a); },1500);
+    }catch(e){
+      ui.error="Couldn't build the file on this phone. Try from a computer.";
+      renderNow(); setTimeout(function(){ ui.error=""; renderNow(); },4000);
+    }
+  }
+  function exportBackup(){
+    download("style-studio-hours-backup-"+isoDate(new Date())+".json",
+      JSON.stringify({ version:1, exportedAt:new Date().toISOString(), data:state },null,2),
+      "application/json");
+  }
+  function csvCell(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }
+  function exportCsv(){
+    var rows=[["Record","Person","Job or week","Date","Hours","Amount","Details","Bill"]];
+    state.clients.forEach(function(c){
+      rows.push(["Job summary","Kelli",c.name,"",fmt1(lifetimeTotal(c.id)),"",
+        "Quoted: "+(c.quotedHours||"—")+"  |  Current bill: "+fmt1(periodTotal(c.id,c.currentPeriodId))+" hrs",c.status]);
+    });
+    state.entries.forEach(function(e){
+      var c=findClient(e.clientId);
+      var which=c?(e.periodId===c.currentPeriodId?"current":"archived"):"";
+      rows.push(["Hours entry",e.person==="kelli"?"Kelli":"Emily",c?c.name:"(deleted job)",e.date,e.hours,"","",which]);
+    });
+    Object.keys(state.notes).forEach(function(k){
+      var txt=state.notes[k]; if(!txt) return;
+      var parts=k.split("__"), c=findClient(parts[0]);
+      var which=c?(parts[1]===c.currentPeriodId?"current":"archived"):"";
+      rows.push(["Billing notes","Kelli",c?c.name:"(deleted job)","",fmt1(extractHoursFromText(txt)),"",txt,which]);
+    });
+    Object.keys(state.weeklyHours).sort().forEach(function(wk){
+      var w=state.weeklyHours[wk];
+      Object.keys(w).sort().forEach(function(d){
+        var hh=parseFloat(w[d].hours)||0, jobs=w[d].jobs||"";
+        if(!hh && !jobs) return;
+        rows.push(["Day worked","Emily","Week of "+wk,d,hh,"",jobs,""]);
+      });
+    });
+    Object.keys(state.weeklyExpenses).sort().forEach(function(wk){
+      var x=state.weeklyExpenses[wk], amt=parseFloat(x.amount)||0;
+      if(!amt && !(x.notes||"")) return;
+      rows.push(["Business expenses","Emily","Week of "+wk,"","",amt.toFixed(2),x.notes||"",""]);
+    });
+    Object.keys(state.weeklyHours).sort().forEach(function(wk){
+      var h=totalForWeek(wk), amt=parseFloat((state.weeklyExpenses[wk]||{}).amount)||0;
+      if(!h && !amt) return;
+      rows.push(["Week total owed","Emily","Week of "+wk,"",fmt1(h),(h*HOURLY_RATE+amt).toFixed(2),
+        fmt1(h)+" hrs x $"+HOURLY_RATE+" + $"+amt.toFixed(2)+" expenses",""]);
+    });
+    download("style-studio-hours-"+isoDate(new Date())+".csv",
+      rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n"),"text/csv");
+  }
+  function handleRestoreFile(input){
+    var f=input.files&&input.files[0]; if(!f) return;
+    var reader=new FileReader();
+    reader.onload=function(){
+      var parsed=null;
+      try{ parsed=JSON.parse(reader.result); }catch(e){}
+      var d=parsed?(parsed.data||parsed):null;
+      if(!d||typeof d!=="object"||Array.isArray(d)){
+        window.alert("That file isn't a backup this app can read. Pick the .json backup file.");
+        input.value=""; return;
+      }
+      var summary=(Array.isArray(d.clients)?d.clients.length:0)+" jobs, "+
+                  (Array.isArray(d.entries)?d.entries.length:0)+" logged entries, "+
+                  Object.keys(d.weeklyHours||{}).length+" weeks of Emily's hours";
+      if(!window.confirm("Restore this backup?\n\nIt has "+summary+".\n\nThis replaces what's in the app right now, for you and for Emily.")){
+        input.value=""; return;
+      }
+      SECTIONS.forEach(function(id){ state[id]=coerce(id,d[id]); });
+      mirrorSave();
+      var chain=Promise.resolve();
+      SECTIONS.forEach(function(id){ chain=chain.then(function(){ return saveSectionNow(id); }); });
+      chain.then(function(){
+        ui.error=""; ui.offlineCopy=false;
+        ui.openClientId=null; ui.openWeekKey=null;
+        renderNow();
+        window.alert("Backup restored.");
+      });
+      input.value="";
+    };
+    reader.readAsText(f);
+  }
+
+  // ---------- mutations ----------
+  function addClient(){
+    var input=document.getElementById("new-client-name");
+    var name=input?input.value.trim():"";
+    if(!name) return;
+    state.clients.push({ id:uid(), name:name, status:"active", quotedHours:"", currentPeriodId:uid(), periods:[], createdAt:Date.now() });
+    if(input) input.value="";
+    saveSection("clients"); renderNow();
+  }
+  function handleNewClientKey(e){ if(e.key==="Enter") addClient(); }
+  function toggleArchive(clientId){
+    var c=findClient(clientId); if(!c) return;
+    c.status = c.status==="active" ? "archived" : "active";
+    saveSection("clients"); renderNow();
+  }
+  function findClient(id){ return state.clients.filter(function(c){ return c.id===id; })[0]; }
+  function updateQuoted(clientId,value){
+    var c=findClient(clientId); if(!c) return;
+    c.quotedHours=value; saveSection("clients"); renderNow();
+  }
+  function setQuickDate(v){ ui.quickDate=v; }
+  function setQuickHours(v){ ui.quickHours=v; }
+  function handleQuickHoursKey(e){ if(e.key==="Enter") addQuickEntry(); }
+  function addQuickEntry(){
+    var hrs=parseFloat(ui.quickHours); var c=findClient(ui.openClientId);
+    if(!c || isNaN(hrs) || hrs<=0) return;
+    state.entries.push({ id:uid(), clientId:c.id, person:"kelli", date:ui.quickDate, hours:hrs, periodId:c.currentPeriodId });
+    ui.quickHours="";
+    saveSection("entries"); renderNow();
+  }
+  function deleteEntry(id){
+    state.entries=state.entries.filter(function(e){ return e.id!==id; });
+    saveSection("entries"); renderNow();
+  }
+  function updateNote(clientId,periodId,text){
+    state.notes[noteKey(clientId,periodId)]=text;
+    saveSection("notes"); renderNow();
+  }
+  function copyNote(clientId,periodId){
+    var text=state.notes[noteKey(clientId,periodId)]||"";
+    var done=function(){ ui.copied=true; renderNow(); setTimeout(function(){ ui.copied=false; renderNow(); },1500); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done,function(){ fallbackCopy(clientId,periodId); });
+    } else { fallbackCopy(clientId,periodId); }
+  }
+  function fallbackCopy(clientId,periodId){
+    var el=document.getElementById("notes-"+clientId+"-"+periodId);
+    if(el){ el.focus(); el.select(); }
+    ui.error="Tap and hold the notes box to copy.";
+    renderNow();
+    setTimeout(function(){ ui.error=""; renderNow(); },3000);
+  }
+  function archiveBill(clientId){
+    var c=findClient(clientId); if(!c) return;
+    if(!window.confirm("Archive this bill and start a new one at 0 hours?\n\nNothing is deleted — this bill's total and notes stay in the job's history.")) return;
+    c.periods=(c.periods||[]).concat([{ id:c.currentPeriodId, closedAt:Date.now() }]);
+    c.currentPeriodId=uid();
+    ui.showHistory=false; ui.historyOpenId=null;
+    saveSection("clients"); renderNow();
+  }
+  function updateDay(mondayISO,dayISO,field,value){
+    var week=state.weeklyHours[mondayISO]||{};
+    var day=week[dayISO]||{ hours:"", jobs:"" };
+    day[field]=value; week[dayISO]=day; state.weeklyHours[mondayISO]=week;
+    saveSection("weeklyHours"); renderNow();
+  }
+  function expensesForWeek(mondayISO){ return state.weeklyExpenses[mondayISO]||{ notes:"", amount:"" }; }
+  function updateExpense(mondayISO,field,value){
+    var cur=state.weeklyExpenses[mondayISO]||{ notes:"", amount:"" };
+    cur[field]=value; state.weeklyExpenses[mondayISO]=cur;
+    saveSection("weeklyExpenses"); renderNow();
+  }
+
+  // ---------- derived ----------
+  function periodTotal(clientId,periodId){
+    var logged=state.entries.filter(function(e){ return e.clientId===clientId && e.periodId===periodId; })
+      .reduce(function(s,e){ return s+(+e.hours||0); },0);
+    return logged + extractHoursFromText(state.notes[noteKey(clientId,periodId)]||"");
+  }
+  function lifetimeTotal(clientId){
+    var logged=state.entries.filter(function(e){ return e.clientId===clientId; })
+      .reduce(function(s,e){ return s+(+e.hours||0); },0);
+    var noteTotal=0;
+    Object.keys(state.notes).forEach(function(k){
+      if(k.indexOf(clientId+"__")===0) noteTotal+=extractHoursFromText(state.notes[k]);
+    });
+    return logged+noteTotal;
+  }
+  function kelliWeekTotal(){
+    var monday=getMonday(new Date());
+    return state.entries.filter(function(e){ return e.person==="kelli" && parseISO(e.date)>=monday; })
+      .reduce(function(s,e){ return s+(+e.hours||0); },0);
+  }
+  function kelliAllTotal(){
+    return state.entries.filter(function(e){ return e.person==="kelli"; }).reduce(function(s,e){ return s+(+e.hours||0); },0);
+  }
+  function totalForWeek(mondayISO){
+    var w=state.weeklyHours[mondayISO]; if(!w) return 0;
+    return Object.keys(w).reduce(function(s,k){ return s+(parseFloat(w[k].hours)||0); },0);
+  }
+  function emilyAllTotal(){
+    return Object.keys(state.weeklyHours).reduce(function(s,k){ return s+totalForWeek(k); },0);
+  }
+  function emilyWeeksTracked(){
+    return Object.keys(state.weeklyHours).filter(function(k){ return totalForWeek(k)>0; }).length;
+  }
+  function yearlyTotalsMap(){
+    var map={};
+    Object.keys(state.weeklyHours).forEach(function(mk){
+      var w=state.weeklyHours[mk];
+      Object.keys(w).forEach(function(dayISO){
+        var y=dayISO.slice(0,4);
+        map[y]=(map[y]||0)+(parseFloat(w[dayISO].hours)||0);
+      });
+    });
+    return map;
+  }
+
+  // ---------- navigation ----------
+  function setPerson(p){ ui.person=p; lsSet("ssh-person",p); ui.openClientId=null; ui.openWeekKey=null; renderNow(); }
+  function setShowArchived(v){ ui.showArchived=v; renderNow(); }
+  function openClient(id){ ui.openClientId=id; ui.showHistory=false; ui.historyOpenId=null; renderNow(); window.scrollTo(0,0); }
+  function closeClient(){ ui.openClientId=null; renderNow(); }
+  function toggleShowHistory(){ ui.showHistory=!ui.showHistory; ui.historyOpenId=null; renderNow(); }
+  function toggleHistoryOpen(pid){ ui.historyOpenId = ui.historyOpenId===pid?null:pid; renderNow(); }
+  function openWeek(k){ ui.openWeekKey=k; renderNow(); window.scrollTo(0,0); }
+  function closeWeek(){ ui.openWeekKey=null; renderNow(); }
+  function showMoreWeeks(){ ui.weeksBack+=8; renderNow(); }
+  function setEmilyView(v){ ui.emilyView=v; renderNow(); }
+
+  // ---------- passcode ----------
+  function submitPasscode(){
+    var el=document.getElementById("passcode-input");
+    var val=el?el.value.trim():"";
+    if(val===PASSCODE){ ui.unlocked=true; ui.lockError=""; lsSet("ssh-unlocked","1"); start(); }
+    else { ui.lockError="That code doesn't match. Try again."; renderNow(); }
+  }
+  function handlePasscodeKey(e){ if(e.key==="Enter") submitPasscode(); }
+
+  // ---------- render plumbing ----------
+  function withFocusPreserved(fn){
+    var a=document.activeElement, id=null, s=null, e2=null;
+    if(a && a.id && (a.tagName==="TEXTAREA"||a.tagName==="INPUT")){ id=a.id; s=a.selectionStart; e2=a.selectionEnd; }
+    fn();
+    if(id){
+      var el=document.getElementById(id);
+      if(el){ el.focus(); if(typeof s==="number" && el.setSelectionRange){ try{ el.setSelectionRange(s,e2); }catch(err){} } }
+    }
+  }
+  function renderNow(){ withFocusPreserved(render); }
+
+  function renderHeader(stats){
+    var tabs=[{id:"kelli",name:"Kelli"},{id:"emily",name:"Emily"}].map(function(p){
+      return '<button class="personBtn'+(ui.person===p.id?" active":"")+'" onclick="setPerson(\''+p.id+'\')">'+p.name+'</button>';
+    }).join("");
+    var statHtml=stats.map(function(s){
+      return '<div class="statBlock"><div class="statLabel">'+esc(s.label.toUpperCase())+'</div>'+
+        '<div class="statValue">'+esc(s.value)+(s.unit?'<span class="unit">'+esc(s.unit)+'</span>':'')+'</div></div>';
+    }).join("");
+    var dotClass = ui.sync==="saving"?" saving":ui.sync==="error"?" error":"";
+    var lbl = ui.sync==="saving"?"SAVING…":ui.sync==="error"?"NOT SAVED":"SYNCED";
+    return '<div class="wrap">'+
+      '<div class="headerRow">'+
+        '<div><div class="eyebrow">STYLE STUDIO INTERIORS</div><h1 class="title">Style Studio Hours</h1>'+
+        '<div class="syncPill"><span id="syncDot" class="syncDot'+dotClass+'"></span><span id="syncLabel">'+lbl+'</span></div></div>'+
+        '<div class="personTabs">'+tabs+'</div>'+
+      '</div>'+
+      '<div class="statStrip">'+statHtml+'</div>'+
+    '</div>';
+  }
+  function renderErrorBanner(){
+    var out="";
+    if(ui.offlineCopy){
+      var when = ui.mirrorAt ? new Date(ui.mirrorAt).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "earlier";
+      out+='<div class="wrap"><div class="errorBanner">'+
+        'Showing the copy saved on this phone (last updated '+esc(when)+'). Not connected to your shared hours right now — '+
+        'anything you type may not reach Emily until it reconnects. '+
+        '<button class="btnSmall" style="border:1px solid var(--pink);color:var(--paper);margin-left:6px" onclick="retryLoad()">Reconnect</button>'+
+      '</div></div>';
+    }
+    if(ui.error) out+='<div class="wrap"><div class="errorBanner">'+esc(ui.error)+'</div></div>';
+    return out;
+  }
+
+  function renderBackupPanel(){
+    return '<div class="wrap section" style="border-top:1px solid #2e2b36;padding-top:20px;margin-top:36px">'+
+      '<div class="notesLabel" style="margin-bottom:8px">BACKUP</div>'+
+      '<div class="muted" style="line-height:1.6;margin-bottom:12px">'+
+        'Save a copy you keep yourself. Email it to yourself once a month and your hours can never be lost, '+
+        'whatever happens to this app or the database.'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+        '<button class="btnPrimary" style="background:var(--paper)" onclick="exportBackup()">Save backup file</button>'+
+        '<button class="btnSmall" style="border:1.5px solid var(--paper);color:var(--paper);padding:11px 16px;font-size:13px" onclick="exportCsv()">Save for Excel</button>'+
+        '<label class="btnSmall" style="border:1.5px solid #4a465a;color:var(--paper-faint);padding:11px 16px;font-size:13px;display:inline-block">'+
+          'Restore from backup'+
+          '<input type="file" accept=".json,application/json" style="display:none" onchange="handleRestoreFile(this)">'+
+        '</label>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // ---------- Kelli ----------
+  function renderKelliList(){
+    var activeCount=state.clients.filter(function(c){ return c.status==="active"; }).length;
+    var archivedCount=state.clients.filter(function(c){ return c.status==="archived"; }).length;
+    var visible=state.clients.filter(function(c){ return ui.showArchived?c.status==="archived":c.status==="active"; });
+    var rows=visible.map(function(c){
+      var accent=c.status==="active"?"var(--pink)":"var(--blue)";
+      var current=periodTotal(c.id,c.currentPeriodId);
+      var lifetime=lifetimeTotal(c.id);
+      var q=parseFloat(c.quotedHours);
+      var qStr=(!isNaN(q)&&q>0)?(" / "+q):"";
+      return '<div class="jobCard">'+
+        '<div class="jobStripe" style="background:'+accent+'"></div>'+
+        '<button class="jobBody" onclick="openClient(\''+c.id+'\')">'+
+          '<div class="jobTopRow"><div class="jobName">'+esc(c.name)+'</div>'+
+          '<div style="font-family:var(--mono);font-size:13px;color:'+accent+';white-space:nowrap">'+fmt1(current)+qStr+'h →</div></div>'+
+          '<div class="jobMeta">Lifetime: '+fmt1(lifetime)+'h</div>'+
+        '</button>'+
+        '<button class="jobArchiveBtn" onclick="toggleArchive(\''+c.id+'\')">'+(c.status==="active"?"Archive":"Reactivate")+'</button>'+
+      '</div>';
+    }).join("");
+    return renderHeader([
+        { label:"This week", value:fmt1(kelliWeekTotal()), unit:"hrs" },
+        { label:"All time", value:fmt1(kelliAllTotal()), unit:"hrs" },
+        { label:"Active jobs", value:String(activeCount), unit:"" }
+      ]) + renderErrorBanner() +
+      '<div class="wrap section">'+
+        '<div class="tabRow">'+
+          '<button class="tabBtn'+(!ui.showArchived?" active":"")+'" style="'+(!ui.showArchived?"background:var(--pink);border-color:var(--pink)":"")+'" onclick="setShowArchived(false)">Active ('+activeCount+')</button>'+
+          '<button class="tabBtn'+(ui.showArchived?" active":"")+'" style="'+(ui.showArchived?"background:var(--blue);border-color:var(--blue)":"")+'" onclick="setShowArchived(true)">Archived ('+archivedCount+')</button>'+
+        '</div>'+
+        (!ui.showArchived?
+          '<div class="addRow">'+
+            '<input id="new-client-name" class="textInput" placeholder="New client or job name" onkeydown="handleNewClientKey(event)">'+
+            '<button class="btnPrimary" style="background:var(--pink)" onclick="addClient()">Add job</button>'+
+          '</div>':'')+
+        (visible.length===0?'<div class="emptyNote">'+(ui.showArchived?"No archived jobs yet.":"No active jobs yet — add your first client above.")+'</div>':'')+
+        rows+
+      '</div>'+
+      renderBackupPanel();
+  }
+
+  function renderKelliDetail(){
+    var c=findClient(ui.openClientId);
+    if(!c){ ui.openClientId=null; return renderKelliList(); }
+    var accent=c.status==="active"?"var(--pink)":"var(--blue)";
+    var accentDark=c.status==="active"?"var(--pink-dark)":"var(--blue-dark)";
+    var past=(c.periods||[]).slice().reverse();
+    var current=periodTotal(c.id,c.currentPeriodId);
+    var lifetime=lifetimeTotal(c.id);
+    var q=parseFloat(c.quotedHours);
+    var over=!isNaN(q)&&q>0&&current>q;
+    var entries=state.entries.filter(function(e){ return e.clientId===c.id&&e.person==="kelli"&&e.periodId===c.currentPeriodId; })
+      .slice().sort(function(a,b){ return a.date<b.date?1:-1; });
+
+    var entriesHtml = entries.length===0?"":
+      '<div class="entryList"><div class="notesLabel" style="margin-bottom:10px">LOGGED ENTRIES — CURRENT BILL</div>'+
+      entries.map(function(e){
+        return '<div class="entryRow"><span>'+esc(e.date)+'</span><span style="color:'+accent+'">'+fmt1(e.hours)+'h</span>'+
+          '<button class="removeLink" onclick="deleteEntry(\''+e.id+'\')">remove</button></div>';
+      }).join("")+'</div>';
+
+    var historyBtn = past.length>0?
+      '<button class="btnSmall" style="color:var(--paper-faint);text-decoration:underline" onclick="toggleShowHistory()">'+
+      (ui.showHistory?"Hide":"Show")+' past bills ('+past.length+')</button>':'';
+
+    var historyList="";
+    if(ui.showHistory&&past.length>0){
+      historyList='<div style="margin-bottom:28px">'+past.map(function(p){
+        var t=periodTotal(c.id,p.id), isOpen=ui.historyOpenId===p.id;
+        var ds=new Date(p.closedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+        var nt=state.notes[noteKey(c.id,p.id)]||"(no notes)";
+        return '<div class="historyItem"><div class="historyTopRow">'+
+          '<span style="font-family:var(--mono);font-size:12px">Archived '+esc(ds)+'</span>'+
+          '<span style="font-family:var(--mono);font-size:12px;color:'+accent+'">'+fmt1(t)+'h</span>'+
+          '<button class="removeLink" onclick="toggleHistoryOpen(\''+p.id+'\')">'+(isOpen?"hide notes":"view notes")+'</button></div>'+
+          (isOpen?'<textarea class="historyNotes" readonly>'+esc(nt)+'</textarea>':'')+
+        '</div>';
+      }).join("")+'</div>';
+    }
+
+    var noteText=state.notes[noteKey(c.id,c.currentPeriodId)]||"";
+    return '<div class="wrap" style="padding-top:26px">'+
+      '<button class="backLink" onclick="closeClient()">← All jobs</button>'+
+      '<div class="detailTitleRow"><div class="swatch" style="background:'+accent+'"></div>'+
+        '<h1 class="title" style="font-size:clamp(22px,4vw,34px)">'+esc(c.name)+'</h1></div>'+
+      '<div class="detailSub">Kelli</div>'+
+      '<div class="statCardRow">'+
+        '<div class="statCard"><div class="statCardLabel">QUOTED HOURS</div>'+
+          '<input id="quoted-'+c.id+'" class="quotedInput" type="number" step="0.5" min="0" inputmode="decimal" value="'+esc(c.quotedHours||"")+'" placeholder="—" oninput="updateQuoted(\''+c.id+'\',this.value)"></div>'+
+        '<div class="statCard"><div class="statCardLabel">CURRENT BILL</div>'+
+          '<div class="statCardValue" style="color:'+(over?"var(--pink)":"inherit")+'">'+fmt1(current)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
+        '<div class="statCard"><div class="statCardLabel">LIFETIME HOURS</div>'+
+          '<div class="statCardValue">'+fmt1(lifetime)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
+      '</div>'+
+      (over?'<div class="overQuoted">This bill is over the '+esc(String(q))+' quoted hours.</div>':'')+
+      '<div class="actionsRow">'+
+        '<button class="btnSmall" style="border:1.5px solid var(--paper);color:var(--paper);padding:10px 16px;font-size:12px" onclick="archiveBill(\''+c.id+'\')">Archive this bill &amp; start fresh</button>'+
+        historyBtn+
+      '</div>'+
+      historyList+
+      '<div class="quickRow">'+
+        '<div><label class="fieldLabel">Date</label><input id="quick-date" class="dateInput" type="date" value="'+esc(ui.quickDate)+'" style="width:165px" oninput="setQuickDate(this.value)"></div>'+
+        '<div><label class="fieldLabel">Hours</label><input id="quick-hours" class="hoursInput" type="number" step="0.25" min="0" inputmode="decimal" value="'+esc(ui.quickHours)+'" placeholder="2.5" style="width:100px" oninput="setQuickHours(this.value)" onkeydown="handleQuickHoursKey(event)"></div>'+
+        '<button class="btnPrimary" style="background:'+accent+'" onclick="addQuickEntry()">Add to log</button>'+
+      '</div>'+
+      entriesHtml+
+      '<div>'+
+        '<div class="notesHeaderRow"><div class="notesLabel">BILLING NOTES — copy into their invoice</div>'+
+        '<button class="btnSmall" style="background:'+accent+';color:var(--ink)" onclick="copyNote(\''+c.id+'\',\''+c.currentPeriodId+'\')">'+(ui.copied?"Copied ✓":"Copy")+'</button></div>'+
+        '<textarea id="notes-'+c.id+'-'+c.currentPeriodId+'" class="billingNotes" style="border:1.5px solid '+accent+'" placeholder="9/15 — 2.5 hrs — Sourced fabric samples, met with vendor" oninput="updateNote(\''+c.id+'\',\''+c.currentPeriodId+'\',this.value)">'+esc(noteText)+'</textarea>'+
+      '</div>'+
+      '<div class="totalBar">'+
+        '<div class="totalBarLabel">CURRENT BILL TOTAL<div class="totalBarSub">logged entries + numbers found in your notes</div></div>'+
+        '<div class="totalBarValue" style="color:'+accentDark+'">'+fmt1(current)+'<span class="unit">hrs</span></div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // ---------- Emily ----------
+  function renderEmilyList(){
+    var currentMonday=getMonday(new Date());
+    var currentISO=isoDate(currentMonday);
+    var body="";
+    if(ui.emilyView==="weeks"){
+      var rows=[];
+      for(var i=0;i<=ui.weeksBack;i++){
+        var m=addDays(currentMonday,-7*i), mISO=isoDate(m), t=totalForWeek(mISO);
+        rows.push('<button class="weekCard" onclick="openWeek(\''+mISO+'\')">'+
+          '<div class="weekTopRow"><div class="weekName">'+esc(weekLabel(m,i===0))+'</div>'+
+          '<div class="weekArrow">'+fmt1(t)+'h →</div></div>'+
+          '<div class="weekRange">'+esc(mISO)+' – '+esc(isoDate(addDays(m,6)))+'</div></button>');
+      }
+      body=rows.join("")+'<button class="btnSmall" style="border:1.5px solid var(--paper);color:var(--paper);margin-top:6px;padding:9px 16px" onclick="showMoreWeeks()">Show earlier weeks</button>';
+    } else {
+      var map=yearlyTotalsMap();
+      var years=Object.keys(map).sort(function(a,b){ return b.localeCompare(a); });
+      body = years.length===0 ? '<div class="emptyNote">No hours logged yet.</div>' :
+        years.map(function(y){
+          return '<div class="yearCard"><div class="jobName">'+esc(y)+'</div>'+
+            '<div style="font-family:var(--mono);font-size:13px;color:var(--blue-dark)">'+fmt1(map[y])+'h</div></div>';
+        }).join("");
+    }
+    return renderHeader([
+        { label:"This week", value:fmt1(totalForWeek(currentISO)), unit:"hrs" },
+        { label:"All time", value:fmt1(emilyAllTotal()), unit:"hrs" },
+        { label:"Weeks tracked", value:String(emilyWeeksTracked()), unit:"" }
+      ]) + renderErrorBanner() +
+      '<div class="wrap section">'+
+        '<div class="tabRow">'+
+          '<button class="tabBtn'+(ui.emilyView==="weeks"?" active":"")+'" style="'+(ui.emilyView==="weeks"?"background:var(--blue);border-color:var(--blue)":"")+'" onclick="setEmilyView(\'weeks\')">Weeks</button>'+
+          '<button class="tabBtn'+(ui.emilyView==="years"?" active":"")+'" style="'+(ui.emilyView==="years"?"background:var(--blue);border-color:var(--blue)":"")+'" onclick="setEmilyView(\'years\')">Years</button>'+
+        '</div>'+ body +
+      '</div>'+
+      renderBackupPanel();
+  }
+
+  function renderEmilyWeekDetail(){
+    var monday=parseISO(ui.openWeekKey);
+    var isCurrent=ui.openWeekKey===isoDate(getMonday(new Date()));
+    var weekTotal=totalForWeek(ui.openWeekKey);
+    var exp=expensesForWeek(ui.openWeekKey);
+    var expTotal=parseFloat(exp.amount)||0;
+    var owed=weekTotal*HOURLY_RATE+expTotal;
+    var todayISO=isoDate(new Date());
+    var dayRows=[];
+    for(var i=0;i<7;i++){
+      var d=addDays(monday,i), dISO=isoDate(d);
+      var dd=(state.weeklyHours[ui.openWeekKey]||{})[dISO]||{ hours:"", jobs:"" };
+      dayRows.push('<div class="dayCard">'+
+        '<div class="dayTopRow"><div class="dayName">'+esc(d.toLocaleDateString("en-US",{weekday:"long"}))+
+          '<span class="dayDate">'+esc(d.toLocaleDateString("en-US",{month:"short",day:"numeric"}))+(dISO===todayISO?" · today":"")+'</span></div>'+
+          '<div style="display:flex;align-items:center;gap:6px">'+
+            '<input id="day-hours-'+ui.openWeekKey+'-'+dISO+'" class="dayHoursInput" type="number" step="0.25" min="0" inputmode="decimal" value="'+esc(dd.hours)+'" placeholder="0" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'hours\',this.value)">'+
+            '<span style="font-family:var(--mono);font-size:12px;color:var(--paper-dim)">hrs</span>'+
+          '</div></div>'+
+        '<textarea id="day-jobs-'+ui.openWeekKey+'-'+dISO+'" class="dayJobsInput" placeholder="Jobs worked on today…" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'jobs\',this.value)">'+esc(dd.jobs)+'</textarea>'+
+      '</div>');
+    }
+    return '<div class="wrap" style="padding-top:26px">'+
+      '<button class="backLink" onclick="closeWeek()">← All weeks</button>'+
+      '<h1 class="title" style="font-size:clamp(22px,4vw,34px);margin-bottom:4px">'+esc(weekLabel(monday,isCurrent))+'</h1>'+
+      '<div class="detailSub">Emily · '+esc(isoDate(monday))+' – '+esc(isoDate(addDays(monday,6)))+'</div>'+
+      dayRows.join("")+
+      '<div class="section" style="margin-top:24px">'+
+        '<div class="notesLabel" style="margin-bottom:10px">BUSINESS EXPENSES</div>'+
+        '<div class="expenseCard">'+
+          '<textarea id="expense-notes-'+ui.openWeekKey+'" class="expenseNotes" placeholder="What did you spend on this week? e.g. Mileage to job site, parking, supplies…" oninput="updateExpense(\''+ui.openWeekKey+'\',\'notes\',this.value)">'+esc(exp.notes)+'</textarea>'+
+          '<div class="expenseAmountRow"><label style="font-family:var(--mono);font-size:12px;color:var(--paper-dim)">Expense total</label>'+
+            '<div style="display:flex;align-items:center;gap:6px"><span style="font-family:var(--mono);font-size:14px;color:var(--paper-dim)">$</span>'+
+            '<input id="expense-amount-'+ui.openWeekKey+'" class="expenseAmountInput" type="number" step="0.01" min="0" inputmode="decimal" value="'+esc(exp.amount)+'" placeholder="0.00" oninput="updateExpense(\''+ui.openWeekKey+'\',\'amount\',this.value)"></div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="totalsStack">'+
+        '<div class="totalsRow"><div class="totalsRowLabel">HOURS TOTAL</div><div class="totalsRowValue">'+fmt1(weekTotal)+' hrs</div></div>'+
+        '<div class="totalsRow"><div class="totalsRowLabel">BUSINESS EXPENSE TOTAL</div><div class="totalsRowValue">$'+fmt2(expTotal)+'</div></div>'+
+        '<div class="totalsRow big"><div class="totalsRowLabel">TOTAL OWED<div class="totalsRowSub">'+fmt1(weekTotal)+' hrs × $'+HOURLY_RATE+' + $'+fmt2(expTotal)+' expenses</div></div>'+
+          '<div class="totalsRowValue">$'+fmt2(owed)+'</div></div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // ---------- top-level render ----------
+  function render(){
+    var root=document.getElementById("root");
+    if(!ui.unlocked){
+      root.innerHTML='<div class="wrap centerScreen">'+
+        '<div><div class="eyebrow">STYLE STUDIO INTERIORS</div><h1 class="title">Style Studio Hours</h1></div>'+
+        '<input id="passcode-input" class="lockInput" type="password" inputmode="text" placeholder="Passcode" onkeydown="handlePasscodeKey(event)">'+
+        '<button class="btnPrimary" style="background:var(--pink)" onclick="submitPasscode()">Open</button>'+
+        (ui.lockError?'<div class="muted" style="color:var(--pink)">'+esc(ui.lockError)+'</div>':'<div class="muted">You only enter this once on this phone.</div>')+
+      '</div>';
+      var pi=document.getElementById("passcode-input"); if(pi) pi.focus();
+      return;
+    }
+    if(ui.loadFailed){
+      root.innerHTML='<div class="wrap centerScreen">'+
+        '<div><div class="eyebrow">STYLE STUDIO INTERIORS</div><h1 class="title">Style Studio Hours</h1></div>'+
+        '<div class="muted">Can\'t reach your hours right now — check your connection.</div>'+
+        '<button class="btnPrimary" style="background:var(--pink)" onclick="retryLoad()">Try again</button>'+
+      '</div>';
+      return;
+    }
+    if(!ui.loaded){
+      root.innerHTML='<div class="centerScreen"><div class="muted">Loading hours…</div></div>';
+      return;
+    }
+    if(ui.person==="kelli") root.innerHTML = ui.openClientId?renderKelliDetail():renderKelliList();
+    else root.innerHTML = ui.openWeekKey?renderEmilyWeekDetail():renderEmilyList();
+  }
+
+  // ---------- boot ----------
+  function applyRow(id,data){ if(SECTIONS.indexOf(id)>=0) state[id]=coerce(id,data); }
+
+  function loadAll(){
+    ui.loadFailed=false;
+    return sb.from("app_state").select("id,data").then(function(res){
+      if(res.error) throw res.error;
+      (res.data||[]).forEach(function(r){ applyRow(r.id,r.data); });
+      ui.loaded=true; ui.loadFailed=false; ui.offlineCopy=false;
+      mirrorSave();
+      setSync("saved");
+      renderNow();
+    }, function(){
+      // Database unreachable — fall back to this phone's copy so the hours
+      // are still visible and exportable.
+      var m=mirrorLoad();
+      if(m && m.data){
+        SECTIONS.forEach(function(id){ applyRow(id,m.data[id]); });
+        ui.loaded=true; ui.offlineCopy=true; ui.mirrorAt=m.at;
+        setSync("error");
+      } else {
+        ui.loadFailed=true;
+      }
+      renderNow();
+    });
+  }
+  function retryLoad(){ ui.loadFailed=false; ui.error=""; renderNow(); loadAll(); }
+
+  function subscribeRealtime(){
+    sb.channel("app_state_live")
+      .on("postgres_changes",{ event:"*", schema:"public", table:"app_state" },function(payload){
+        var row=payload.new; if(!row||!row.id) return;
+        if(Date.now()-(lastWrite[row.id]||0) < 3000) return;   // ignore the echo of our own write
+        applyRow(row.id,row.data);
+        renderNow();
+      })
+      .subscribe();
+  }
+
+  function start(){
+    ui.person = lsGet("ssh-person")||"kelli";
+    render();
+    loadAll().then(subscribeRealtime);
+    document.addEventListener("visibilitychange",function(){
+      if(document.visibilityState==="visible" && ui.loaded) loadAll();
+    });
+  }
+
+  // expose handlers
+  window.setPerson=setPerson; window.setShowArchived=setShowArchived;
+  window.openClient=openClient; window.closeClient=closeClient;
+  window.toggleShowHistory=toggleShowHistory; window.toggleHistoryOpen=toggleHistoryOpen;
+  window.openWeek=openWeek; window.closeWeek=closeWeek; window.showMoreWeeks=showMoreWeeks;
+  window.setEmilyView=setEmilyView; window.addClient=addClient; window.handleNewClientKey=handleNewClientKey;
+  window.toggleArchive=toggleArchive; window.updateQuoted=updateQuoted;
+  window.setQuickDate=setQuickDate; window.setQuickHours=setQuickHours;
+  window.handleQuickHoursKey=handleQuickHoursKey; window.addQuickEntry=addQuickEntry;
+  window.deleteEntry=deleteEntry; window.updateNote=updateNote; window.copyNote=copyNote;
+  window.archiveBill=archiveBill; window.updateDay=updateDay; window.updateExpense=updateExpense;
+  window.submitPasscode=submitPasscode; window.handlePasscodeKey=handlePasscodeKey;
+  window.retryLoad=retryLoad; window.exportBackup=exportBackup; window.exportCsv=exportCsv;
+  window.handleRestoreFile=handleRestoreFile;
+
+  // init
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  if(PASSCODE && lsGet("ssh-unlocked")==="1") ui.unlocked=true;
+  if(ui.unlocked) start(); else render();
+})();
+</script>
+</body>
+</html>
