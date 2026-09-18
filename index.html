@@ -696,7 +696,7 @@
       '<div class="detailSub">Kelli</div>'+
       '<div class="statCardRow">'+
         '<div class="statCard"><div class="statCardLabel">QUOTED HOURS</div>'+
-          '<input id="quoted-'+c.id+'" class="quotedInput" type="number" step="0.5" min="0" inputmode="decimal" value="'+esc(c.quotedHours||"")+'" placeholder="—" oninput="updateQuoted(\''+c.id+'\',this.value)"></div>'+
+          '<input id="quoted-'+c.id+'" class="quotedInput" type="text" inputmode="decimal" value="'+esc(c.quotedHours||"")+'" placeholder="—" oninput="updateQuoted(\''+c.id+'\',this.value)"></div>'+
         '<div class="statCard"><div class="statCardLabel">CURRENT BILL</div>'+
           '<div class="statCardValue" style="color:'+(over?"var(--pink)":"inherit")+'">'+fmt1(current)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
         '<div class="statCard"><div class="statCardLabel">LIFETIME HOURS</div>'+
@@ -710,7 +710,7 @@
       historyList+
       '<div class="quickRow">'+
         '<div><label class="fieldLabel">Date</label><input id="quick-date" class="dateInput" type="date" value="'+esc(ui.quickDate)+'" style="width:165px" oninput="setQuickDate(this.value)"></div>'+
-        '<div><label class="fieldLabel">Hours</label><input id="quick-hours" class="hoursInput" type="number" step="0.25" min="0" inputmode="decimal" value="'+esc(ui.quickHours)+'" placeholder="2.5" style="width:100px" oninput="setQuickHours(this.value)" onkeydown="handleQuickHoursKey(event)"></div>'+
+        '<div><label class="fieldLabel">Hours</label><input id="quick-hours" class="hoursInput" type="text" inputmode="decimal" value="'+esc(ui.quickHours)+'" placeholder="2.5" style="width:100px" oninput="setQuickHours(this.value)" onkeydown="handleQuickHoursKey(event)"></div>'+
         '<button class="btnPrimary" style="background:'+accent+'" onclick="addQuickEntry()">Add to log</button>'+
       '</div>'+
       entriesHtml+
@@ -780,7 +780,7 @@
         '<div class="dayTopRow"><div class="dayName">'+esc(d.toLocaleDateString("en-US",{weekday:"long"}))+
           '<span class="dayDate">'+esc(d.toLocaleDateString("en-US",{month:"short",day:"numeric"}))+(dISO===todayISO?" · today":"")+'</span></div>'+
           '<div style="display:flex;align-items:center;gap:6px">'+
-            '<input id="day-hours-'+ui.openWeekKey+'-'+dISO+'" class="dayHoursInput" type="number" step="0.25" min="0" inputmode="decimal" value="'+esc(dd.hours)+'" placeholder="0" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'hours\',this.value)">'+
+            '<input id="day-hours-'+ui.openWeekKey+'-'+dISO+'" class="dayHoursInput" type="text" inputmode="decimal" value="'+esc(dd.hours)+'" placeholder="0" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'hours\',this.value)">'+
             '<span style="font-family:var(--mono);font-size:12px;color:var(--paper-dim)">hrs</span>'+
           '</div></div>'+
         '<textarea id="day-jobs-'+ui.openWeekKey+'-'+dISO+'" class="dayJobsInput" placeholder="Jobs worked on today…" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'jobs\',this.value)">'+esc(dd.jobs)+'</textarea>'+
@@ -797,7 +797,7 @@
           '<textarea id="expense-notes-'+ui.openWeekKey+'" class="expenseNotes" placeholder="What did you spend on this week? e.g. Mileage to job site, parking, supplies…" oninput="updateExpense(\''+ui.openWeekKey+'\',\'notes\',this.value)">'+esc(exp.notes)+'</textarea>'+
           '<div class="expenseAmountRow"><label style="font-family:var(--mono);font-size:12px;color:var(--paper-dim)">Expense total</label>'+
             '<div style="display:flex;align-items:center;gap:6px"><span style="font-family:var(--mono);font-size:14px;color:var(--paper-dim)">$</span>'+
-            '<input id="expense-amount-'+ui.openWeekKey+'" class="expenseAmountInput" type="number" step="0.01" min="0" inputmode="decimal" value="'+esc(exp.amount)+'" placeholder="0.00" oninput="updateExpense(\''+ui.openWeekKey+'\',\'amount\',this.value)"></div>'+
+            '<input id="expense-amount-'+ui.openWeekKey+'" class="expenseAmountInput" type="text" inputmode="decimal" value="'+esc(exp.amount)+'" placeholder="0.00" oninput="updateExpense(\''+ui.openWeekKey+'\',\'amount\',this.value)"></div>'+
           '</div>'+
         '</div>'+
       '</div>'+
