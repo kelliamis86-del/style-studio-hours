@@ -17,6 +17,7 @@
   :root{
     --ink:#151319; --paper:#F6F2EC; --paper-dim:#5a5560; --paper-faint:#9d97a8;
     --pink:#FF2E7E; --pink-dark:#B4185A; --blue:#3D6BFF; --blue-dark:#1E3FBF;
+    --drive:#FFB020;
     --card-dark:#211f28; --card-border:#3a3742; --input-border:#d8d2c6;
     --mono:'IBM Plex Mono', ui-monospace, monospace;
     --display:'Archivo Black','Arial Black',sans-serif;
@@ -139,6 +140,18 @@
   .totalBarSub{ font-size:10px; color:var(--paper-dim); margin-top:2px; font-weight:400; }
   .totalBarValue{ font-family:var(--display); font-size:25px; white-space:nowrap; }
   .totalBarValue .unit{ font-family:var(--mono); font-size:13px; margin-left:4px; }
+  .driveBlock{
+    margin-top:28px; border:1.5px solid var(--drive); border-radius:5px; padding:16px; background:#1c1a22;
+  }
+  .driveNotes{
+    width:100%; min-height:130px; padding:14px; font-family:var(--mono); font-size:13px; line-height:1.6;
+    border:1.5px solid var(--input-border); border-radius:3px; background:var(--paper); color:var(--ink); resize:vertical;
+  }
+  .driveRateRow{ display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; }
+  .driveRateInput{
+    width:76px; padding:7px 8px; font-family:var(--mono); font-size:16px; text-align:right;
+    border:1.5px solid var(--input-border); border-radius:3px; background:#fff; color:var(--ink);
+  }
   .weekCard{
     background:var(--paper); color:var(--ink); border-radius:4px; padding:14px 16px; text-align:left;
     border:none; width:100%; display:block; margin-bottom:10px; font:inherit;
@@ -205,24 +218,24 @@
   "use strict";
 
   // ======== CONFIG ========
-  var SUPABASE_URL = "https://mzfzrolryqyxasjuzdky.supabase.co";
-  var SUPABASE_KEY = "sb_publishable_dSQkQQm3H3RnO_nYJHNhYw_YZQRhzWn";
+  var SUPABASE_URL = "https://ycjosjygabxodbfwhodk.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_rwYxdzBSED8Q7KG6CzULPA_FH8D0nYn";
   var PASSCODE = "studio45";          // change this to whatever you and Emily prefer
   var HOURLY_RATE = 45;               // Emily's hourly rate
   // ========================
 
-  var SECTIONS = ["clients","entries","notes","weeklyHours","weeklyExpenses"];
-  var DEFAULTS = { clients:[], entries:[], notes:{}, weeklyHours:{}, weeklyExpenses:{} };
+  var SECTIONS = ["clients","entries","notes","driveNotes","weeklyHours","weeklyExpenses"];
+  var DEFAULTS = { clients:[], entries:[], notes:{}, driveNotes:{}, weeklyHours:{}, weeklyExpenses:{} };
 
   var sb = null;
-  var state = { clients:[], entries:[], notes:{}, weeklyHours:{}, weeklyExpenses:{} };
+  var state = { clients:[], entries:[], notes:{}, driveNotes:{}, weeklyHours:{}, weeklyExpenses:{} };
   var ui = {
     person:"kelli", showArchived:false, openClientId:null,
     quickDate:isoDate(new Date()), quickHours:"", copied:false,
     showHistory:false, historyOpenId:null,
     openWeekKey:null, weeksBack:8, emilyView:"weeks",
     error:"", loaded:false, loadFailed:false, unlocked:!PASSCODE,
-    lockError:"", sync:"saved", offlineCopy:false, mirrorAt:null
+    lockError:"", sync:"saved", offlineCopy:false, mirrorAt:null, driveCopied:false
   };
   var saveTimers = {}, lastWrite = {};
 
@@ -272,7 +285,12 @@
       return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
     });
   }
-  function fmt1(n){ return (n||0).toFixed(1); }
+  // Hours display: keeps one decimal normally (8 -> "8.0") but shows the
+  // real quarter-hour when there is one (0.75 stays "0.75", never "0.8").
+  function fmt1(n){
+    var r=Math.round((n||0)*100)/100;
+    return r.toFixed(2).replace(/0$/,"");
+  }
   function fmt2(n){ return (n||0).toFixed(2); }
   function uid(){ return Math.random().toString(36).slice(2,10); }
   function noteKey(clientId,periodId){ return clientId+"__"+periodId; }
@@ -338,7 +356,9 @@
     var rows=[["Record","Person","Job or week","Date","Hours","Amount","Details","Bill"]];
     state.clients.forEach(function(c){
       rows.push(["Job summary","Kelli",c.name,"",fmt1(lifetimeTotal(c.id)),"",
-        "Quoted: "+(c.quotedHours||"—")+"  |  Current bill: "+fmt1(periodTotal(c.id,c.currentPeriodId))+" hrs",c.status]);
+        "Quoted: "+(c.quotedHours||"—")+"  |  Current bill: "+fmt1(periodTotal(c.id,c.currentPeriodId))+" hrs"+
+        "  |  Drive time lifetime: "+fmt1(driveLifetimeTotal(c.id))+" hrs"+
+        (c.driveRate?"  |  Drive rate: $"+c.driveRate+"/hr":""),c.status]);
     });
     state.entries.forEach(function(e){
       var c=findClient(e.clientId);
@@ -350,6 +370,15 @@
       var parts=k.split("__"), c=findClient(parts[0]);
       var which=c?(parts[1]===c.currentPeriodId?"current":"archived"):"";
       rows.push(["Billing notes","Kelli",c?c.name:"(deleted job)","",fmt1(extractHoursFromText(txt)),"",txt,which]);
+    });
+    Object.keys(state.driveNotes).forEach(function(k){
+      var txt=state.driveNotes[k]; if(!txt) return;
+      var parts=k.split("__"), c=findClient(parts[0]);
+      var which=c?(parts[1]===c.currentPeriodId?"current":"archived"):"";
+      var hrs=extractHoursFromText(txt);
+      var rate=c?parseFloat(c.driveRate):NaN;
+      rows.push(["Drive time","Kelli",c?c.name:"(deleted job)","",fmt1(hrs),
+        (!isNaN(rate)&&rate>0)?(hrs*rate).toFixed(2):"",txt,which]);
     });
     Object.keys(state.weeklyHours).sort().forEach(function(wk){
       var w=state.weeklyHours[wk];
@@ -457,6 +486,28 @@
     renderNow();
     setTimeout(function(){ ui.error=""; renderNow(); },3000);
   }
+
+  // --- drive time: tracked per job per bill, kept out of billable hours ---
+  function updateDriveNote(clientId,periodId,text){
+    state.driveNotes[noteKey(clientId,periodId)]=text;
+    saveSection("driveNotes"); renderNow();
+  }
+  function updateDriveRate(clientId,value){
+    var c=findClient(clientId); if(!c) return;
+    c.driveRate=value; saveSection("clients"); renderNow();
+  }
+  function copyDriveNote(clientId,periodId){
+    var text=state.driveNotes[noteKey(clientId,periodId)]||"";
+    var done=function(){ ui.driveCopied=true; renderNow(); setTimeout(function(){ ui.driveCopied=false; renderNow(); },1500); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done,function(){
+        var el=document.getElementById("drive-"+clientId+"-"+periodId);
+        if(el){ el.focus(); el.select(); }
+        ui.error="Tap and hold the drive time box to copy.";
+        renderNow(); setTimeout(function(){ ui.error=""; renderNow(); },3000);
+      });
+    } else { done(); }
+  }
   function archiveBill(clientId){
     var c=findClient(clientId); if(!c) return;
     if(!window.confirm("Archive this bill and start a new one at 0 hours?\n\nNothing is deleted — this bill's total and notes stay in the job's history.")) return;
@@ -492,6 +543,18 @@
       if(k.indexOf(clientId+"__")===0) noteTotal+=extractHoursFromText(state.notes[k]);
     });
     return logged+noteTotal;
+  }
+  // Drive time totals — deliberately NOT part of periodTotal or lifetimeTotal,
+  // so quoted hours and the current bill stay billable-hours only.
+  function drivePeriodTotal(clientId,periodId){
+    return extractHoursFromText(state.driveNotes[noteKey(clientId,periodId)]||"");
+  }
+  function driveLifetimeTotal(clientId){
+    var total=0;
+    Object.keys(state.driveNotes).forEach(function(k){
+      if(k.indexOf(clientId+"__")===0) total+=extractHoursFromText(state.driveNotes[k]);
+    });
+    return total;
   }
   function kelliWeekTotal(){
     var monday=getMonday(new Date());
@@ -676,14 +739,17 @@
     var historyList="";
     if(ui.showHistory&&past.length>0){
       historyList='<div style="margin-bottom:28px">'+past.map(function(p){
-        var t=periodTotal(c.id,p.id), isOpen=ui.historyOpenId===p.id;
+        var t=periodTotal(c.id,p.id), dt=drivePeriodTotal(c.id,p.id), isOpen=ui.historyOpenId===p.id;
         var ds=new Date(p.closedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
         var nt=state.notes[noteKey(c.id,p.id)]||"(no notes)";
+        var dn=state.driveNotes[noteKey(c.id,p.id)]||"";
         return '<div class="historyItem"><div class="historyTopRow">'+
           '<span style="font-family:var(--mono);font-size:12px">Archived '+esc(ds)+'</span>'+
-          '<span style="font-family:var(--mono);font-size:12px;color:'+accent+'">'+fmt1(t)+'h</span>'+
+          '<span style="font-family:var(--mono);font-size:12px;color:'+accent+'">'+fmt1(t)+'h'+
+            (dt>0?'<span style="color:var(--drive)"> + '+fmt1(dt)+'h drive</span>':'')+'</span>'+
           '<button class="removeLink" onclick="toggleHistoryOpen(\''+p.id+'\')">'+(isOpen?"hide notes":"view notes")+'</button></div>'+
-          (isOpen?'<textarea class="historyNotes" readonly>'+esc(nt)+'</textarea>':'')+
+          (isOpen?'<textarea class="historyNotes" readonly>'+esc(nt)+'</textarea>'+
+            (dn?'<textarea class="historyNotes" readonly style="border-color:var(--drive);min-height:70px">Drive time:\n'+esc(dn)+'</textarea>':''):'')+
         '</div>';
       }).join("")+'</div>';
     }
@@ -696,7 +762,7 @@
       '<div class="detailSub">Kelli</div>'+
       '<div class="statCardRow">'+
         '<div class="statCard"><div class="statCardLabel">QUOTED HOURS</div>'+
-          '<input id="quoted-'+c.id+'" class="quotedInput" type="text" inputmode="decimal" value="'+esc(c.quotedHours||"")+'" placeholder="—" oninput="updateQuoted(\''+c.id+'\',this.value)"></div>'+
+          '<input id="quoted-'+c.id+'" class="quotedInput" type="number" step="0.5" min="0" inputmode="decimal" value="'+esc(c.quotedHours||"")+'" placeholder="—" oninput="updateQuoted(\''+c.id+'\',this.value)"></div>'+
         '<div class="statCard"><div class="statCardLabel">CURRENT BILL</div>'+
           '<div class="statCardValue" style="color:'+(over?"var(--pink)":"inherit")+'">'+fmt1(current)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
         '<div class="statCard"><div class="statCardLabel">LIFETIME HOURS</div>'+
@@ -710,7 +776,7 @@
       historyList+
       '<div class="quickRow">'+
         '<div><label class="fieldLabel">Date</label><input id="quick-date" class="dateInput" type="date" value="'+esc(ui.quickDate)+'" style="width:165px" oninput="setQuickDate(this.value)"></div>'+
-        '<div><label class="fieldLabel">Hours</label><input id="quick-hours" class="hoursInput" type="text" inputmode="decimal" value="'+esc(ui.quickHours)+'" placeholder="2.5" style="width:100px" oninput="setQuickHours(this.value)" onkeydown="handleQuickHoursKey(event)"></div>'+
+        '<div><label class="fieldLabel">Hours</label><input id="quick-hours" class="hoursInput" type="number" step="0.25" min="0" inputmode="decimal" value="'+esc(ui.quickHours)+'" placeholder="2.5" style="width:100px" oninput="setQuickHours(this.value)" onkeydown="handleQuickHoursKey(event)"></div>'+
         '<button class="btnPrimary" style="background:'+accent+'" onclick="addQuickEntry()">Add to log</button>'+
       '</div>'+
       entriesHtml+
@@ -722,6 +788,39 @@
       '<div class="totalBar">'+
         '<div class="totalBarLabel">CURRENT BILL TOTAL<div class="totalBarSub">logged entries + numbers found in your notes</div></div>'+
         '<div class="totalBarValue" style="color:'+accentDark+'">'+fmt1(current)+'<span class="unit">hrs</span></div>'+
+      '</div>'+
+      renderDriveSection(c)+
+    '</div>';
+  }
+
+  // Drive time lives in its own block, billed at its own rate, and never
+  // counts toward the quoted hours or the current bill above.
+  function renderDriveSection(c){
+    var driveNow=drivePeriodTotal(c.id,c.currentPeriodId);
+    var driveEver=driveLifetimeTotal(c.id);
+    var driveText=state.driveNotes[noteKey(c.id,c.currentPeriodId)]||"";
+    var rate=parseFloat(c.driveRate);
+    var hasRate=!isNaN(rate)&&rate>0;
+    return '<div class="driveBlock">'+
+      '<div class="notesHeaderRow">'+
+        '<div><div class="notesLabel" style="color:var(--drive)">DRIVE TIME</div>'+
+        '<div class="muted" style="font-size:10px;margin-top:3px">billed separately — not counted in the hours above</div></div>'+
+        '<button class="btnSmall" style="background:var(--drive);color:var(--ink)" onclick="copyDriveNote(\''+c.id+'\',\''+c.currentPeriodId+'\')">'+(ui.driveCopied?"Copied ✓":"Copy")+'</button>'+
+      '</div>'+
+      '<textarea id="drive-'+c.id+'-'+c.currentPeriodId+'" class="driveNotes" placeholder="9/15 — 1.5 hrs — round trip to showroom&#10;9/18 — 0.75 hrs — site visit" oninput="updateDriveNote(\''+c.id+'\',\''+c.currentPeriodId+'\',this.value)">'+esc(driveText)+'</textarea>'+
+      '<div class="driveRateRow">'+
+        '<label class="fieldLabel" style="margin:0">Drive rate <span style="opacity:.7">(optional)</span></label>'+
+        '<div style="display:flex;align-items:center;gap:5px">'+
+          '<span style="font-family:var(--mono);font-size:13px;color:var(--paper-faint)">$</span>'+
+          '<input id="driverate-'+c.id+'" class="driveRateInput" type="number" step="1" min="0" inputmode="decimal" value="'+esc(c.driveRate||"")+'" placeholder="—" oninput="updateDriveRate(\''+c.id+'\',this.value)">'+
+          '<span style="font-family:var(--mono);font-size:11px;color:var(--paper-faint)">/hr</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="totalsStack" style="margin-top:14px">'+
+        '<div class="totalsRow"><div class="totalsRowLabel">DRIVE TIME — THIS BILL</div>'+
+          '<div class="totalsRowValue">'+fmt1(driveNow)+' hrs'+(hasRate?'<span style="font-family:var(--mono);font-size:13px;margin-left:8px">$'+fmt2(driveNow*rate)+'</span>':'')+'</div></div>'+
+        '<div class="totalsRow"><div class="totalsRowLabel">DRIVE TIME — LIFETIME</div>'+
+          '<div class="totalsRowValue">'+fmt1(driveEver)+' hrs'+(hasRate?'<span style="font-family:var(--mono);font-size:13px;margin-left:8px">$'+fmt2(driveEver*rate)+'</span>':'')+'</div></div>'+
       '</div>'+
     '</div>';
   }
@@ -780,7 +879,7 @@
         '<div class="dayTopRow"><div class="dayName">'+esc(d.toLocaleDateString("en-US",{weekday:"long"}))+
           '<span class="dayDate">'+esc(d.toLocaleDateString("en-US",{month:"short",day:"numeric"}))+(dISO===todayISO?" · today":"")+'</span></div>'+
           '<div style="display:flex;align-items:center;gap:6px">'+
-            '<input id="day-hours-'+ui.openWeekKey+'-'+dISO+'" class="dayHoursInput" type="text" inputmode="decimal" value="'+esc(dd.hours)+'" placeholder="0" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'hours\',this.value)">'+
+            '<input id="day-hours-'+ui.openWeekKey+'-'+dISO+'" class="dayHoursInput" type="number" step="0.25" min="0" inputmode="decimal" value="'+esc(dd.hours)+'" placeholder="0" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'hours\',this.value)">'+
             '<span style="font-family:var(--mono);font-size:12px;color:var(--paper-dim)">hrs</span>'+
           '</div></div>'+
         '<textarea id="day-jobs-'+ui.openWeekKey+'-'+dISO+'" class="dayJobsInput" placeholder="Jobs worked on today…" oninput="updateDay(\''+ui.openWeekKey+'\',\''+dISO+'\',\'jobs\',this.value)">'+esc(dd.jobs)+'</textarea>'+
@@ -797,7 +896,7 @@
           '<textarea id="expense-notes-'+ui.openWeekKey+'" class="expenseNotes" placeholder="What did you spend on this week? e.g. Mileage to job site, parking, supplies…" oninput="updateExpense(\''+ui.openWeekKey+'\',\'notes\',this.value)">'+esc(exp.notes)+'</textarea>'+
           '<div class="expenseAmountRow"><label style="font-family:var(--mono);font-size:12px;color:var(--paper-dim)">Expense total</label>'+
             '<div style="display:flex;align-items:center;gap:6px"><span style="font-family:var(--mono);font-size:14px;color:var(--paper-dim)">$</span>'+
-            '<input id="expense-amount-'+ui.openWeekKey+'" class="expenseAmountInput" type="text" inputmode="decimal" value="'+esc(exp.amount)+'" placeholder="0.00" oninput="updateExpense(\''+ui.openWeekKey+'\',\'amount\',this.value)"></div>'+
+            '<input id="expense-amount-'+ui.openWeekKey+'" class="expenseAmountInput" type="number" step="0.01" min="0" inputmode="decimal" value="'+esc(exp.amount)+'" placeholder="0.00" oninput="updateExpense(\''+ui.openWeekKey+'\',\'amount\',this.value)"></div>'+
           '</div>'+
         '</div>'+
       '</div>'+
@@ -901,6 +1000,8 @@
   window.submitPasscode=submitPasscode; window.handlePasscodeKey=handlePasscodeKey;
   window.retryLoad=retryLoad; window.exportBackup=exportBackup; window.exportCsv=exportCsv;
   window.handleRestoreFile=handleRestoreFile;
+  window.updateDriveNote=updateDriveNote; window.updateDriveRate=updateDriveRate;
+  window.copyDriveNote=copyDriveNote;
 
   // init
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
