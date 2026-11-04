@@ -589,7 +589,7 @@
   function findClient(id){ return state.clients.filter(function(c){ return c.id===id; })[0]; }
   function updateQuoted(clientId,value){
     var c=findClient(clientId); if(!c) return;
-    c.quotedHours=numOnly(value); saveSection("clients"); renderNow();
+    c.quotedHours=numOnly(value); saveSection("clients"); refreshReadouts();
   }
   function setQuickDate(v){ ui.quickDate=v; }
   function setQuickHours(v){ ui.quickHours=numOnly(v); }
@@ -608,7 +608,7 @@
   }
   function updateNote(clientId,periodId,text){
     state.notes[noteKey(clientId,periodId)]=text;
-    saveSection("notes"); renderNow();
+    saveSection("notes");
   }
   function copyNote(clientId,periodId){
     var text=state.notes[noteKey(clientId,periodId)]||"";
@@ -628,11 +628,11 @@
   // --- drive time: tracked per job per bill, kept out of billable hours ---
   function updateDriveNote(clientId,periodId,text){
     state.driveNotes[noteKey(clientId,periodId)]=text;
-    saveSection("driveNotes"); renderNow();
+    saveSection("driveNotes"); refreshReadouts();
   }
   function updateDriveRate(clientId,value){
     var c=findClient(clientId); if(!c) return;
-    c.driveRate=numOnly(value); saveSection("clients"); renderNow();
+    c.driveRate=numOnly(value); saveSection("clients"); refreshReadouts();
   }
   function copyDriveNote(clientId,periodId){
     var text=state.driveNotes[noteKey(clientId,periodId)]||"";
@@ -659,14 +659,14 @@
     var day=week[dayISO]||{ hours:"", jobs:"" };
     day[field] = (field==="hours") ? numOnly(value) : value;
     week[dayISO]=day; state.weeklyHours[mondayISO]=week;
-    saveSection("weeklyHours"); renderNow();
+    saveSection("weeklyHours"); refreshReadouts();
   }
   function expensesForWeek(mondayISO){ return state.weeklyExpenses[mondayISO]||{ notes:"", amount:"" }; }
   function updateExpense(mondayISO,field,value){
     var cur=state.weeklyExpenses[mondayISO]||{ notes:"", amount:"" };
     cur[field] = (field==="amount") ? numOnly(value) : value;
     state.weeklyExpenses[mondayISO]=cur;
-    saveSection("weeklyExpenses"); renderNow();
+    saveSection("weeklyExpenses"); refreshReadouts();
   }
 
   // ---------- bill lines ----------
@@ -699,7 +699,8 @@
       if(r.id!==rowId) return r;
       var copy=Object.assign({},r); copy[field]=v; return copy;
     });
-    setLines(clientId,periodId,list);
+    state.billLines[noteKey(clientId,periodId)]=list;
+    saveSection("billLines"); refreshReadouts();
   }
   function deleteLine(clientId,periodId,rowId){
     setLines(clientId,periodId,(linesFor(clientId,periodId)||[]).filter(function(r){ return r.id!==rowId; }));
@@ -782,7 +783,7 @@
   // not totalled — this is a list to copy across, not a calculation.
   function updatePurchases(clientId,periodId,text){
     state.purchases[noteKey(clientId,periodId)]=text;
-    saveSection("purchases"); renderNow();
+    saveSection("purchases");
   }
   function copyPurchases(clientId,periodId){
     var text=state.purchases[noteKey(clientId,periodId)]||"";
@@ -804,7 +805,7 @@
   // ---------- job notes ----------
   function updateJobNote(clientId,text){
     state.jobNotes[clientId]=text;
-    saveSection("jobNotes"); renderNow();
+    saveSection("jobNotes");
   }
 
   // ---------- shopping list ----------
@@ -847,7 +848,8 @@
     var list=shoppingFor(clientId).map(function(r){
       return r.id===rowId?Object.assign({},r,{ text:text }):r;
     });
-    setShopping(clientId,list);
+    state.shopping[clientId]=list;
+    saveSection("shopping");
   }
   function toggleShoppingDone(clientId,rowId){
     var list=shoppingFor(clientId).map(function(r){
@@ -1035,6 +1037,38 @@
   }
   function renderNow(){ withFocusPreserved(render); }
 
+  // Typing must never rebuild the page. On a phone, replacing the box you are
+  // typing in sends the keyboard back to letters on every keystroke — so while
+  // you type, only the figures that depend on what you typed are rewritten.
+  function setText(id,txt){ var el=document.getElementById(id); if(el) el.textContent=txt; }
+  function setLead(id,txt){ var el=document.getElementById(id); if(el&&el.firstChild) el.firstChild.nodeValue=txt; }
+  function refreshReadouts(){
+    var c = ui.openClientId ? findClient(ui.openClientId) : null;
+    if(c){
+      var cur=periodTotal(c.id,c.currentPeriodId), life=lifetimeTotal(c.id);
+      var q=parseFloat(c.quotedHours), over=!isNaN(q)&&q>0&&cur>q;
+      setText("roBillTotal",fmt1(cur));
+      setLead("roCurrent",fmt1(cur));
+      var sc=document.getElementById("roCurrent");
+      if(sc) sc.style.color = over?"var(--pink)":"inherit";
+      setLead("roLifetime",fmt1(life));
+      var oq=document.getElementById("roOverQuoted");
+      if(oq){ oq.hidden=!over; setText("roQuoted",isNaN(q)?"":String(q)); }
+      var rate=parseFloat(c.driveRate), hasRate=!isNaN(rate)&&rate>0;
+      var dn=drivePeriodTotal(c.id,c.currentPeriodId), de=driveLifetimeTotal(c.id);
+      setText("roDriveNow",fmt1(dn)+" hrs"+(hasRate?"   $"+fmt2(dn*rate):""));
+      setText("roDriveEver",fmt1(de)+" hrs"+(hasRate?"   $"+fmt2(de*rate):""));
+    }
+    if(ui.openWeekKey){
+      var wh=totalForWeek(ui.openWeekKey);
+      var ex=parseFloat(expensesForWeek(ui.openWeekKey).amount)||0;
+      setText("roWeekHours",fmt1(wh)+" hrs");
+      setText("roWeekExp","$"+fmt2(ex));
+      setText("roWeekSum",fmt1(wh)+" hrs × $"+HOURLY_RATE+" + $"+fmt2(ex)+" expenses");
+      setText("roWeekOwed","$"+fmt2(wh*HOURLY_RATE+ex));
+    }
+  }
+
   function renderHeader(stats){
     var tabs=[{id:"kelli",name:"Kelli"},{id:"emily",name:"Emily"}].map(function(p){
       return '<button class="personBtn'+(ui.person===p.id?" active":"")+'" onclick="setPerson(\''+p.id+'\')">'+p.name+'</button>';
@@ -1199,11 +1233,11 @@
         '<div class="statCard"><div class="statCardLabel">QUOTED HOURS</div>'+
           '<input id="quoted-'+c.id+'" class="quotedInput" type="text" inputmode="decimal" autocomplete="off" value="'+esc(c.quotedHours||"")+'" placeholder="—" oninput="updateQuoted(\''+c.id+'\',this.value)"></div>'+
         '<div class="statCard"><div class="statCardLabel">CURRENT BILL</div>'+
-          '<div class="statCardValue" style="color:'+(over?"var(--pink)":"inherit")+'">'+fmt1(current)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
+          '<div id="roCurrent" class="statCardValue" style="color:'+(over?"var(--pink)":"inherit")+'">'+fmt1(current)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
         '<div class="statCard"><div class="statCardLabel">LIFETIME HOURS</div>'+
-          '<div class="statCardValue">'+fmt1(lifetime)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
+          '<div id="roLifetime" class="statCardValue">'+fmt1(lifetime)+'<span style="font-family:var(--mono);font-size:12px;margin-left:3px">h</span></div></div>'+
       '</div>'+
-      (over?'<div class="overQuoted">This bill is over the '+esc(String(q))+' quoted hours.</div>':'')+
+      '<div id="roOverQuoted" class="overQuoted"'+(over?'':' hidden')+'>This bill is over the <span id="roQuoted">'+esc(isNaN(q)?"":String(q))+'</span> quoted hours.</div>'+
       '<div class="actionsRow">'+
         '<button class="btnSmall" style="border:1.5px solid var(--paper);color:var(--paper);padding:10px 16px;font-size:12px" onclick="archiveBill(\''+c.id+'\')">Archive this bill &amp; start fresh</button>'+
         historyBtn+
@@ -1226,7 +1260,7 @@
         '</div>':'')+
       '<div class="totalBar">'+
         '<div class="totalBarLabel">CURRENT BILL TOTAL<div class="totalBarSub">adds up the hours boxes above</div></div>'+
-        '<div class="totalBarValue" style="color:'+accentDark+'">'+fmt1(current)+'<span class="unit">hrs</span></div>'+
+        '<div class="totalBarValue" style="color:'+accentDark+'"><span id="roBillTotal">'+fmt1(current)+'</span><span class="unit">hrs</span></div>'+
       '</div>'+
       renderDriveSection(c)+
       renderWorkTiles(c)+
@@ -1258,9 +1292,9 @@
       '</div>'+
       '<div class="totalsStack" style="margin-top:14px">'+
         '<div class="totalsRow"><div class="totalsRowLabel">DRIVE TIME — THIS BILL</div>'+
-          '<div class="totalsRowValue">'+fmt1(driveNow)+' hrs'+(hasRate?'<span style="font-family:var(--mono);font-size:13px;margin-left:8px">$'+fmt2(driveNow*rate)+'</span>':'')+'</div></div>'+
+          '<div id="roDriveNow" class="totalsRowValue">'+fmt1(driveNow)+' hrs'+(hasRate?'<span style="font-family:var(--mono);font-size:13px;margin-left:8px">$'+fmt2(driveNow*rate)+'</span>':'')+'</div></div>'+
         '<div class="totalsRow"><div class="totalsRowLabel">DRIVE TIME — LIFETIME</div>'+
-          '<div class="totalsRowValue">'+fmt1(driveEver)+' hrs'+(hasRate?'<span style="font-family:var(--mono);font-size:13px;margin-left:8px">$'+fmt2(driveEver*rate)+'</span>':'')+'</div></div>'+
+          '<div id="roDriveEver" class="totalsRowValue">'+fmt1(driveEver)+' hrs'+(hasRate?'<span style="font-family:var(--mono);font-size:13px;margin-left:8px">$'+fmt2(driveEver*rate)+'</span>':'')+'</div></div>'+
       '</div>'+
     '</div>';
   }
@@ -1469,10 +1503,10 @@
         '</div>'+
       '</div>'+
       '<div class="totalsStack">'+
-        '<div class="totalsRow"><div class="totalsRowLabel">HOURS TOTAL</div><div class="totalsRowValue">'+fmt1(weekTotal)+' hrs</div></div>'+
-        '<div class="totalsRow"><div class="totalsRowLabel">BUSINESS EXPENSE TOTAL</div><div class="totalsRowValue">$'+fmt2(expTotal)+'</div></div>'+
-        '<div class="totalsRow big"><div class="totalsRowLabel">TOTAL OWED<div class="totalsRowSub">'+fmt1(weekTotal)+' hrs × $'+HOURLY_RATE+' + $'+fmt2(expTotal)+' expenses</div></div>'+
-          '<div class="totalsRowValue">$'+fmt2(owed)+'</div></div>'+
+        '<div class="totalsRow"><div class="totalsRowLabel">HOURS TOTAL</div><div id="roWeekHours" class="totalsRowValue">'+fmt1(weekTotal)+' hrs</div></div>'+
+        '<div class="totalsRow"><div class="totalsRowLabel">BUSINESS EXPENSE TOTAL</div><div id="roWeekExp" class="totalsRowValue">$'+fmt2(expTotal)+'</div></div>'+
+        '<div class="totalsRow big"><div class="totalsRowLabel">TOTAL OWED<div id="roWeekSum" class="totalsRowSub">'+fmt1(weekTotal)+' hrs × $'+HOURLY_RATE+' + $'+fmt2(expTotal)+' expenses</div></div>'+
+          '<div id="roWeekOwed" class="totalsRowValue">$'+fmt2(owed)+'</div></div>'+
       '</div>'+
     '</div>';
   }
