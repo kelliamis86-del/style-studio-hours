@@ -126,6 +126,25 @@
     background:var(--card-dark); border-radius:4px; padding:9px 12px; display:flex; justify-content:space-between;
     align-items:center; font-family:var(--mono); font-size:12px; margin-bottom:6px; gap:10px;
   }
+  .lineList{ display:flex; flex-direction:column; gap:8px; }
+  .lineRow{ background:var(--paper); border-radius:4px; padding:10px 11px; }
+  .lineText{
+    width:100%; border:none; background:transparent; color:var(--ink); font-family:var(--body);
+    font-size:16px; line-height:1.4; padding:2px 0 4px; resize:none; overflow:hidden; display:block;
+  }
+  .lineText:focus{ outline:2px solid var(--pink); outline-offset:2px; border-radius:2px; }
+  .lineBottom{ display:flex; align-items:center; gap:7px; border-top:1px solid #e6dfd2; padding-top:7px; }
+  .lineDate{
+    width:62px; border:1px solid var(--input-border); border-radius:3px; background:#fff; color:var(--ink);
+    font-family:var(--mono); font-size:14px; padding:5px 6px; text-align:center;
+  }
+  .lineSpacer{ flex:1; }
+  .lineHours{
+    width:62px; border:1.5px solid var(--pink); border-radius:3px; background:#fff; color:var(--ink);
+    font-family:var(--mono); font-size:16px; font-weight:600; padding:5px 6px; text-align:right;
+  }
+  .lineUnit{ font-family:var(--mono); font-size:12px; color:var(--paper-dim); }
+  .lineDel{ font-size:14px; color:#8a8494; padding:0 2px 0 4px; text-decoration:none; }
   .notesHeaderRow{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; }
   .notesLabel{ font-family:var(--mono); font-size:11px; letter-spacing:1px; color:var(--paper-faint); }
   .billingNotes{
@@ -152,17 +171,37 @@
     width:76px; padding:7px 8px; font-family:var(--mono); font-size:16px; text-align:right;
     border:1.5px solid var(--input-border); border-radius:3px; background:#fff; color:var(--ink);
   }
-  .tileRow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:26px; }
+  .tileRow{ display:flex; flex-direction:column; gap:9px; margin-top:26px; }
   .workTile{
-    display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+    display:flex; flex-direction:row; align-items:center; gap:13px;
     background:var(--paper); color:var(--ink); border:none; border-radius:5px;
-    padding:16px 14px; text-align:left; font:inherit; min-height:112px; justify-content:center;
+    padding:15px 15px; text-align:left; font:inherit; width:100%;
   }
-  .tileIcon{ color:var(--pink-dark); display:block; margin-bottom:4px; }
+  .tileIcon{ color:var(--pink-dark); display:flex; flex:none; }
+  .tileText{ display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
   .tileName{ font-weight:700; font-size:16px; }
   .tileMeta{ font-family:var(--mono); font-size:11px; color:var(--paper-dim); }
+  .tileChev{ flex:none; font-size:22px; color:#b4ada1; line-height:1; }
   .panelTitle{ font-size:clamp(24px,5vw,34px); margin-bottom:4px; }
   .panelNotes{ min-height:62vh; font-size:17px; line-height:1.65; }
+
+  /* A page whose typing area fills whatever is left of the screen. */
+  /* On a full page the body's bottom gutter is given back to the typing area. */
+  body.fullPageMode{ padding-bottom:env(safe-area-inset-bottom,0px); }
+  .fullPage{
+    display:flex; flex-direction:column;
+    height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+    height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+    padding-top:18px; padding-bottom:12px;
+  }
+  .fullPageHead{ flex:none; }
+  .fullPageHead .backLink{ margin-bottom:10px; }
+  .fullPageTitle{ font-size:26px; margin:0 0 8px; }
+  .fullPageTitleRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .fullPageBox{
+    flex:1 1 auto; min-height:180px; width:100%; margin:0;
+    font-size:17px; line-height:1.6; resize:none;
+  }
   .shopPhoto{
     display:block; width:100%; height:auto; max-height:70vh; object-fit:contain;
     border-radius:3px; background:#141218;
@@ -283,8 +322,8 @@
   var HOURLY_RATE = 45;               // Emily's hourly rate
   // ========================
 
-  var SECTIONS = ["clients","entries","notes","driveNotes","jobNotes","shopping","weeklyHours","weeklyExpenses"];
-  var DEFAULTS = { clients:[], entries:[], notes:{}, driveNotes:{}, jobNotes:{}, shopping:{}, weeklyHours:{}, weeklyExpenses:{} };
+  var SECTIONS = ["clients","entries","notes","billLines","driveNotes","jobNotes","shopping","purchases","weeklyHours","weeklyExpenses"];
+  var DEFAULTS = { clients:[], entries:[], notes:{}, billLines:{}, driveNotes:{}, jobNotes:{}, shopping:{}, purchases:{}, weeklyHours:{}, weeklyExpenses:{} };
 
   // Talks to the database directly over plain web requests — no outside
   // library to load, so nothing external can stop the app from opening.
@@ -312,14 +351,14 @@
     });
   }
 
-  var state = { clients:[], entries:[], notes:{}, driveNotes:{}, jobNotes:{}, shopping:{}, weeklyHours:{}, weeklyExpenses:{} };
+  var state = { clients:[], entries:[], notes:{}, billLines:{}, driveNotes:{}, jobNotes:{}, shopping:{}, purchases:{}, weeklyHours:{}, weeklyExpenses:{} };
   var ui = {
     person:"kelli", showArchived:false, openClientId:null,
     quickDate:isoDate(new Date()), quickHours:"", copied:false,
     showHistory:false, historyOpenId:null,
     openWeekKey:null, weeksBack:8, emilyView:"weeks",
     error:"", loaded:false, loadFailed:false, unlocked:!PASSCODE,
-    lockError:"", sync:"saved", offlineCopy:false, mirrorAt:null, driveCopied:false,
+    lockError:"", sync:"saved", offlineCopy:false, mirrorAt:null, driveCopied:false, purchasesCopied:false, linesCopied:false, origNotesOpen:false,
     writeFailed:false, photoClient:null, photoAfter:null, photoUploading:false, openPanel:null
   };
   var saveTimers = {}, lastWrite = {};
@@ -558,9 +597,10 @@
   function addQuickEntry(){
     var hrs=parseFloat(ui.quickHours); var c=findClient(ui.openClientId);
     if(!c || isNaN(hrs) || hrs<=0) return;
-    state.entries.push({ id:uid(), clientId:c.id, person:"kelli", date:ui.quickDate, hours:hrs, periodId:c.currentPeriodId });
+    var list=(linesFor(c.id,c.currentPeriodId)||[]).slice();
+    list.push({ id:uid(), date:isoToShort(ui.quickDate), text:"", hours:String(hrs) });
     ui.quickHours="";
-    saveSection("entries"); renderNow();
+    setLines(c.id,c.currentPeriodId,list);
   }
   function deleteEntry(id){
     state.entries=state.entries.filter(function(e){ return e.id!==id; });
@@ -629,6 +669,138 @@
     saveSection("weeklyExpenses"); renderNow();
   }
 
+  // ---------- bill lines ----------
+  // Each billable entry is its own row with its own hours box. The bill total
+  // is the sum of those boxes — nothing is guessed from prose.
+  function linesFor(clientId,periodId){
+    var l=state.billLines[noteKey(clientId,periodId)];
+    return Array.isArray(l)?l:null;
+  }
+  function lineHours(r){ var n=parseFloat(r.hours); return isNaN(n)?0:n; }
+  function setLines(clientId,periodId,list){
+    state.billLines[noteKey(clientId,periodId)]=list;
+    saveSection("billLines"); renderNow();
+  }
+  function addLine(clientId,periodId,afterRowId){
+    var list=(linesFor(clientId,periodId)||[]).slice();
+    var row={ id:uid(), date:isoToShort(isoDate(new Date())), text:"", hours:"" };
+    var at=-1;
+    if(afterRowId){ for(var i=0;i<list.length;i++){ if(list[i].id===afterRowId){ at=i; break; } } }
+    if(at>=0) list.splice(at+1,0,row); else list.push(row);
+    setLines(clientId,periodId,list);
+    setTimeout(function(){
+      var el=document.getElementById("linetext-"+clientId+"-"+row.id);
+      if(el) el.focus();
+    },60);
+  }
+  function updateLine(clientId,periodId,rowId,field,value){
+    var v = (field==="hours") ? numOnly(value) : value;
+    var list=(linesFor(clientId,periodId)||[]).map(function(r){
+      if(r.id!==rowId) return r;
+      var copy=Object.assign({},r); copy[field]=v; return copy;
+    });
+    setLines(clientId,periodId,list);
+  }
+  function deleteLine(clientId,periodId,rowId){
+    setLines(clientId,periodId,(linesFor(clientId,periodId)||[]).filter(function(r){ return r.id!==rowId; }));
+  }
+  function linesAsText(clientId,periodId){
+    return (linesFor(clientId,periodId)||[]).map(function(r){
+      var bits=[];
+      if(r.date) bits.push(r.date);
+      if(String(r.hours).trim()) bits.push(fmt1(lineHours(r))+" hrs");
+      if(r.text) bits.push(r.text);
+      return bits.join(" — ");
+    }).filter(function(l){ return l.trim(); }).join("\n");
+  }
+  function copyLines(clientId,periodId){
+    var text=linesAsText(clientId,periodId);
+    var done=function(){ ui.linesCopied=true; renderNow(); setTimeout(function(){ ui.linesCopied=false; renderNow(); },1500); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done,function(){
+        ui.error="Couldn't copy automatically — the lines are above to copy by hand.";
+        renderNow(); setTimeout(function(){ ui.error=""; renderNow(); },3500);
+      });
+    } else { done(); }
+  }
+  function isoToShort(iso){
+    var p=String(iso).split("-");
+    return p.length===3 ? (parseInt(p[1],10)+"/"+parseInt(p[2],10)) : String(iso);
+  }
+  function toggleOrigNotes(){ ui.origNotesOpen=!ui.origNotesOpen; renderNow(); }
+
+  // Turns one old free-text note line into a row. Conservative on purpose:
+  // it only treats a number as hours when the note says "hrs"/"hours", so a
+  // size like 30x40 or a price never becomes billable time by accident.
+  function parseNoteLine(line){
+    var date="", rest=line;
+    var dm=line.match(/^\s*(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/);
+    if(dm){ date=dm[1]; rest=line.slice(dm[0].length); }
+    rest=rest.replace(/^[\s—–\-:]+/,"");
+    var hours="";
+    var hm=rest.match(/(\d+(?:\.\d+)?)\s*(?:hrs?|hours?)\b/i);
+    if(hm){ hours=hm[1]; rest=rest.slice(0,hm.index)+rest.slice(hm.index+hm[0].length); }
+    rest=rest.replace(/^[\s—–\-:]+/,"").replace(/[\s—–\-:]+$/,"");
+    return { id:uid(), date:date, text:rest, hours:hours };
+  }
+  // One-off: build rows from what is already recorded. Logged entries convert
+  // exactly; note lines convert conservatively. Originals are left untouched.
+  function migrateBillLines(){
+    var changed=false;
+    state.clients.forEach(function(c){
+      var pids=[c.currentPeriodId].concat((c.periods||[]).map(function(p){ return p.id; }));
+      pids.forEach(function(pid){
+        if(!pid) return;
+        var key=noteKey(c.id,pid);
+        if(Array.isArray(state.billLines[key])) return;
+        // Typed notes come first — they carry the description. A logged entry
+        // is only added when no note line already records the same date AND
+        // the same hours, because the same work written in both places must
+        // not be counted twice.
+        var lines=[];
+        (state.notes[key]||"").split("\n").forEach(function(raw){
+          if(raw.trim()) lines.push(parseNoteLine(raw.trim()));
+        });
+        state.entries.filter(function(e){ return e.clientId===c.id && e.periodId===pid; })
+          .slice().sort(function(a,b){ return a.date<b.date?1:-1; })
+          .forEach(function(e){
+            var d=isoToShort(e.date||""), h=String(e.hours);
+            var already=lines.some(function(r){
+              return r.date===d && parseFloat(r.hours)===parseFloat(h);
+            });
+            if(!already) lines.push({ id:uid(), date:d, text:"", hours:h });
+          });
+        state.billLines[key]=lines;
+        changed=true;
+      });
+    });
+    return changed;
+  }
+
+  // ---------- purchases ----------
+  // Things bought for the client that go on their next invoice. Deliberately
+  // not totalled — this is a list to copy across, not a calculation.
+  function updatePurchases(clientId,periodId,text){
+    state.purchases[noteKey(clientId,periodId)]=text;
+    saveSection("purchases"); renderNow();
+  }
+  function copyPurchases(clientId,periodId){
+    var text=state.purchases[noteKey(clientId,periodId)]||"";
+    var done=function(){ ui.purchasesCopied=true; renderNow(); setTimeout(function(){ ui.purchasesCopied=false; renderNow(); },1500); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done,function(){
+        var el=document.getElementById("purch-"+clientId+"-"+periodId);
+        if(el){ el.focus(); el.select(); }
+        ui.error="Tap and hold the purchases box to copy.";
+        renderNow(); setTimeout(function(){ ui.error=""; renderNow(); },3000);
+      });
+    } else { done(); }
+  }
+  function purchaseCount(clientId,periodId){
+    var t=(state.purchases[noteKey(clientId,periodId)]||"").split("\n").filter(function(l){ return l.trim(); });
+    return t.length;
+  }
+
   // ---------- job notes ----------
   function updateJobNote(clientId,text){
     state.jobNotes[clientId]=text;
@@ -668,7 +840,7 @@
     el.style.height=(el.scrollHeight)+"px";
   }
   function autoGrowAll(){
-    var els=document.querySelectorAll(".shopText");
+    var els=document.querySelectorAll(".shopText,.lineText");
     for(var i=0;i<els.length;i++) autoGrow(els[i]);
   }
   function updateShoppingText(clientId,rowId,text){
@@ -774,18 +946,17 @@
 
   // ---------- derived ----------
   function periodTotal(clientId,periodId){
+    var lines=linesFor(clientId,periodId);
+    if(lines) return lines.reduce(function(s,r){ return s+lineHours(r); },0);
+    // only before this job's rows have been built
     var logged=state.entries.filter(function(e){ return e.clientId===clientId && e.periodId===periodId; })
       .reduce(function(s,e){ return s+(+e.hours||0); },0);
     return logged + extractHoursFromText(state.notes[noteKey(clientId,periodId)]||"");
   }
   function lifetimeTotal(clientId){
-    var logged=state.entries.filter(function(e){ return e.clientId===clientId; })
-      .reduce(function(s,e){ return s+(+e.hours||0); },0);
-    var noteTotal=0;
-    Object.keys(state.notes).forEach(function(k){
-      if(k.indexOf(clientId+"__")===0) noteTotal+=extractHoursFromText(state.notes[k]);
-    });
-    return logged+noteTotal;
+    var c=findClient(clientId); if(!c) return 0;
+    var pids=[c.currentPeriodId].concat((c.periods||[]).map(function(p){ return p.id; }));
+    return pids.reduce(function(s,pid){ return s+(pid?periodTotal(clientId,pid):0); },0);
   }
   // Drive time totals — deliberately NOT part of periodTotal or lifetimeTotal,
   // so quoted hours and the current bill stay billable-hours only.
@@ -967,15 +1138,30 @@
     var lifetime=lifetimeTotal(c.id);
     var q=parseFloat(c.quotedHours);
     var over=!isNaN(q)&&q>0&&current>q;
-    var entries=state.entries.filter(function(e){ return e.clientId===c.id&&e.person==="kelli"&&e.periodId===c.currentPeriodId; })
-      .slice().sort(function(a,b){ return a.date<b.date?1:-1; });
-
-    var entriesHtml = entries.length===0?"":
-      '<div class="entryList"><div class="notesLabel" style="margin-bottom:10px">LOGGED ENTRIES — CURRENT BILL</div>'+
-      entries.map(function(e){
-        return '<div class="entryRow"><span>'+esc(e.date)+'</span><span style="color:'+accent+'">'+fmt1(e.hours)+'h</span>'+
-          '<button class="removeLink" onclick="deleteEntry(\''+e.id+'\')">remove</button></div>';
-      }).join("")+'</div>';
+    var lines=linesFor(c.id,c.currentPeriodId)||[];
+    var pid=c.currentPeriodId;
+    var entriesHtml =
+      '<div class="entryList">'+
+        '<div class="notesHeaderRow">'+
+          '<div><div class="notesLabel">THIS BILL — one line per entry</div>'+
+          '<div class="muted" style="font-size:10px;margin-top:3px">the total below adds up the hours boxes, nothing else</div></div>'+
+          '<button class="btnSmall" style="background:'+accent+';color:var(--ink)" onclick="copyLines(\''+c.id+'\',\''+pid+'\')">'+(ui.linesCopied?"Copied ✓":"Copy")+'</button>'+
+        '</div>'+
+        (lines.length===0?'<div class="muted" style="padding:4px 2px 12px">No entries on this bill yet.</div>':'')+
+        '<div class="lineList">'+lines.map(function(r){
+          return '<div class="lineRow">'+
+            '<textarea id="linetext-'+c.id+'-'+r.id+'" class="lineText" rows="1" placeholder="What you did…" oninput="updateLine(\''+c.id+'\',\''+pid+'\',\''+r.id+'\',\'text\',this.value);autoGrow(this)">'+esc(r.text||"")+'</textarea>'+
+            '<div class="lineBottom">'+
+              '<input class="lineDate" type="text" inputmode="numeric" value="'+esc(r.date||"")+'" placeholder="11/2" aria-label="Date" oninput="updateLine(\''+c.id+'\',\''+pid+'\',\''+r.id+'\',\'date\',this.value)">'+
+              '<span class="lineSpacer"></span>'+
+              '<input class="lineHours" type="text" inputmode="decimal" value="'+esc(r.hours||"")+'" placeholder="0" aria-label="Hours" oninput="updateLine(\''+c.id+'\',\''+pid+'\',\''+r.id+'\',\'hours\',this.value)">'+
+              '<span class="lineUnit">hrs</span>'+
+              '<button class="removeLink lineDel" aria-label="Remove this line" onclick="deleteLine(\''+c.id+'\',\''+pid+'\',\''+r.id+'\')">✕</button>'+
+            '</div>'+
+          '</div>';
+        }).join("")+'</div>'+
+        '<button class="btnPrimary" style="background:var(--paper);margin-top:10px" onclick="addLine(\''+c.id+'\',\''+pid+'\',null)">+ Add line</button>'+
+      '</div>';
 
     var historyBtn = past.length>0?
       '<button class="btnSmall" style="color:var(--paper-faint);text-decoration:underline" onclick="toggleShowHistory()">'+
@@ -986,15 +1172,18 @@
       historyList='<div style="margin-bottom:28px">'+past.map(function(p){
         var t=periodTotal(c.id,p.id), dt=drivePeriodTotal(c.id,p.id), isOpen=ui.historyOpenId===p.id;
         var ds=new Date(p.closedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
-        var nt=state.notes[noteKey(c.id,p.id)]||"(no notes)";
+        var nt=linesAsText(c.id,p.id)||state.notes[noteKey(c.id,p.id)]||"(no entries)";
         var dn=state.driveNotes[noteKey(c.id,p.id)]||"";
+        var pu=state.purchases[noteKey(c.id,p.id)]||"";
         return '<div class="historyItem"><div class="historyTopRow">'+
           '<span style="font-family:var(--mono);font-size:12px">Archived '+esc(ds)+'</span>'+
           '<span style="font-family:var(--mono);font-size:12px;color:'+accent+'">'+fmt1(t)+'h'+
-            (dt>0?'<span style="color:var(--drive)"> + '+fmt1(dt)+'h drive</span>':'')+'</span>'+
+            (dt>0?'<span style="color:var(--drive)"> + '+fmt1(dt)+'h drive</span>':'')+
+            (pu?'<span style="color:#8a8494"> + purchases</span>':'')+'</span>'+
           '<button class="removeLink" onclick="toggleHistoryOpen(\''+p.id+'\')">'+(isOpen?"hide notes":"view notes")+'</button></div>'+
           (isOpen?'<textarea class="historyNotes" readonly>'+esc(nt)+'</textarea>'+
-            (dn?'<textarea class="historyNotes" readonly style="border-color:var(--drive);min-height:70px">Drive time:\n'+esc(dn)+'</textarea>':''):'')+
+            (dn?'<textarea class="historyNotes" readonly style="border-color:var(--drive);min-height:70px">Drive time:\n'+esc(dn)+'</textarea>':'')+
+            (pu?'<textarea class="historyNotes" readonly style="border-color:#8a8494;min-height:70px">Purchases:\n'+esc(pu)+'</textarea>':''):'')+
         '</div>';
       }).join("")+'</div>';
     }
@@ -1026,13 +1215,17 @@
         '<button class="btnPrimary" style="background:'+accent+'" onclick="addQuickEntry()">Add to log</button>'+
       '</div>'+
       entriesHtml+
-      '<div>'+
-        '<div class="notesHeaderRow"><div class="notesLabel">BILLING NOTES — copy into their invoice</div>'+
-        '<button class="btnSmall" style="background:'+accent+';color:var(--ink)" onclick="copyNote(\''+c.id+'\',\''+c.currentPeriodId+'\')">'+(ui.copied?"Copied ✓":"Copy")+'</button></div>'+
-        '<textarea id="notes-'+c.id+'-'+c.currentPeriodId+'" class="billingNotes" style="border:1.5px solid '+accent+'" placeholder="9/15 — 2.5 hrs — Sourced fabric samples, met with vendor" oninput="updateNote(\''+c.id+'\',\''+c.currentPeriodId+'\',this.value)">'+esc(noteText)+'</textarea>'+
-      '</div>'+
+      (noteText.trim()?
+        '<div style="margin-top:6px">'+
+          '<button class="btnSmall" style="color:var(--paper-faint);text-decoration:underline;padding-left:0" onclick="toggleOrigNotes()">'+
+            (ui.origNotesOpen?"Hide":"Show")+' your original typed notes</button>'+
+          (ui.origNotesOpen?
+            '<div class="muted" style="margin:6px 0 6px">Kept exactly as you wrote them. Not counted in the total — the lines above are.</div>'+
+            '<textarea id="notes-'+c.id+'-'+c.currentPeriodId+'" class="billingNotes" style="border:1.5px solid #4a465a;min-height:150px" oninput="updateNote(\''+c.id+'\',\''+c.currentPeriodId+'\',this.value)">'+esc(noteText)+'</textarea>'
+            :'')+
+        '</div>':'')+
       '<div class="totalBar">'+
-        '<div class="totalBarLabel">CURRENT BILL TOTAL<div class="totalBarSub">logged entries + numbers found in your notes</div></div>'+
+        '<div class="totalBarLabel">CURRENT BILL TOTAL<div class="totalBarSub">adds up the hours boxes above</div></div>'+
         '<div class="totalBarValue" style="color:'+accentDark+'">'+fmt1(current)+'<span class="unit">hrs</span></div>'+
       '</div>'+
       renderDriveSection(c)+
@@ -1082,6 +1275,14 @@
     '<rect x="3" y="14" width="6" height="6" rx="1.3"/>'+
     '<path d="M12 7h9M12 17h9"/></svg>';
 
+  var ICON_BAG = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+
+    '<path d="M5 8h14l-1.2 11.2a1.5 1.5 0 0 1-1.5 1.3H7.7a1.5 1.5 0 0 1-1.5-1.3z"/>'+
+    '<path d="M9 8V6.4A3 3 0 0 1 15 6.4V8"/></svg>';
+
+  function purchasesSummary(clientId,periodId){
+    var n=purchaseCount(clientId,periodId);
+    return n?(n+(n===1?" item":" items")):"Nothing yet";
+  }
   function shoppingSummary(clientId){
     var list=shoppingFor(clientId);
     var items=list.filter(function(r){ return r.type==="item"; });
@@ -1100,18 +1301,19 @@
   }
 
   function renderWorkTiles(c){
-    return '<div class="tileRow">'+
-      '<button class="workTile" onclick="openPanel(\'notes\')">'+
-        '<span class="tileIcon">'+ICON_NOTE+'</span>'+
-        '<span class="tileName">Job notes</span>'+
-        '<span class="tileMeta">'+esc(notesSummary(c.id))+'</span>'+
-      '</button>'+
-      '<button class="workTile" onclick="openPanel(\'shopping\')">'+
-        '<span class="tileIcon">'+ICON_LIST+'</span>'+
-        '<span class="tileName">Shopping list</span>'+
-        '<span class="tileMeta">'+esc(shoppingSummary(c.id))+'</span>'+
-      '</button>'+
-    '</div>';
+    var rows=[
+      { key:"notes",     icon:ICON_NOTE, name:"Job notes",     meta:notesSummary(c.id) },
+      { key:"purchases", icon:ICON_BAG,  name:"Purchases",     meta:purchasesSummary(c.id,c.currentPeriodId) },
+      { key:"shopping",  icon:ICON_LIST, name:"Shopping list", meta:shoppingSummary(c.id) }
+    ];
+    return '<div class="tileRow">'+rows.map(function(r){
+      return '<button class="workTile" onclick="openPanel(\''+r.key+'\')">'+
+        '<span class="tileIcon">'+r.icon+'</span>'+
+        '<span class="tileText"><span class="tileName">'+esc(r.name)+'</span>'+
+        '<span class="tileMeta">'+esc(r.meta)+'</span></span>'+
+        '<span class="tileChev">›</span>'+
+      '</button>';
+    }).join("")+'</div>';
   }
 
   function renderPanelHeader(c,title){
@@ -1122,11 +1324,30 @@
 
   function renderNotesPanel(c){
     var text=state.jobNotes[c.id]||"";
+    // Full-height page: the typing area is the page, not a box sitting in it.
     return renderErrorBanner()+
-      '<div class="wrap" style="padding-top:26px">'+
-        renderPanelHeader(c,"Job notes")+
-        '<textarea id="jobnote-'+c.id+'" class="jobNotesArea panelNotes" placeholder="Measurements, client preferences, vendor contacts, what is still outstanding…" oninput="updateJobNote(\''+c.id+'\',this.value)">'+esc(text)+'</textarea>'+
-        '<div class="muted" style="margin-top:10px">Saves as you type. Emily sees this too.</div>'+
+      '<div class="wrap fullPage">'+
+        '<div class="fullPageHead">'+
+          '<button class="backLink" onclick="closePanel()">← '+esc(c.name)+'</button>'+
+          '<h1 class="title fullPageTitle">Job notes</h1>'+
+        '</div>'+
+        '<textarea id="jobnote-'+c.id+'" class="jobNotesArea fullPageBox" placeholder="Measurements, client preferences, vendor contacts, what is still outstanding…" oninput="updateJobNote(\''+c.id+'\',this.value)">'+esc(text)+'</textarea>'+
+      '</div>';
+  }
+
+  function renderPurchasesPanel(c){
+    var text=state.purchases[noteKey(c.id,c.currentPeriodId)]||"";
+    return renderErrorBanner()+
+      '<div class="wrap fullPage">'+
+        '<div class="fullPageHead">'+
+          '<button class="backLink" onclick="closePanel()">← '+esc(c.name)+'</button>'+
+          '<div class="fullPageTitleRow">'+
+            '<h1 class="title fullPageTitle">Purchases</h1>'+
+            '<button class="btnSmall" style="background:var(--paper);color:var(--ink)" onclick="copyPurchases(\''+c.id+'\',\''+c.currentPeriodId+'\')">'+(ui.purchasesCopied?"Copied ✓":"Copy")+'</button>'+
+          '</div>'+
+          '<div class="muted" style="margin-bottom:10px">What to bill this client for. Nothing here is added up.</div>'+
+        '</div>'+
+        '<textarea id="purch-'+c.id+'-'+c.currentPeriodId+'" class="jobNotesArea fullPageBox" placeholder="Drapery hardware — Restoration Hardware — $412.80&#10;Entry runner — Loloi — $289.00&#10;Freight on sconces — $64.15" oninput="updatePurchases(\''+c.id+'\',\''+c.currentPeriodId+'\',this.value)">'+esc(text)+'</textarea>'+
       '</div>';
   }
 
@@ -1292,14 +1513,23 @@
         var pc=findClient(ui.openClientId);
         if(!pc){ ui.openPanel=null; ui.openClientId=null; }
         else {
-          root.innerHTML = ui.openPanel==="notes"?renderNotesPanel(pc):renderShoppingPanel(pc);
+          var full = (ui.openPanel==="notes" || ui.openPanel==="purchases");
+          document.body.classList.toggle("fullPageMode", full);
+          root.innerHTML = ui.openPanel==="notes"      ? renderNotesPanel(pc)
+                         : ui.openPanel==="purchases" ? renderPurchasesPanel(pc)
+                         :                              renderShoppingPanel(pc);
           autoGrowAll();
           return;
         }
       }
+      document.body.classList.remove("fullPageMode");
       root.innerHTML = ui.openClientId?renderKelliDetail():renderKelliList();
+      if(ui.openClientId) autoGrowAll();
     }
-    else root.innerHTML = ui.openWeekKey?renderEmilyWeekDetail():renderEmilyList();
+    else {
+      document.body.classList.remove("fullPageMode");
+      root.innerHTML = ui.openWeekKey?renderEmilyWeekDetail():renderEmilyList();
+    }
   }
 
   // ---------- boot ----------
@@ -1334,6 +1564,7 @@
     return withTimeout(apiLoad(),12000).then(function(rows){
       (rows||[]).forEach(function(r){ applyRow(r.id,r.data); });
       ui.loaded=true; ui.loadFailed=false; ui.offlineCopy=false;
+      if(migrateBillLines()) saveSection("billLines");
       mirrorSave();
       setSync("saved");
       renderNow();
@@ -1397,6 +1628,9 @@
   window.handleRestoreFile=handleRestoreFile;
   window.updateDriveNote=updateDriveNote; window.updateDriveRate=updateDriveRate;
   window.copyDriveNote=copyDriveNote;
+  window.updatePurchases=updatePurchases; window.copyPurchases=copyPurchases;
+  window.addLine=addLine; window.updateLine=updateLine; window.deleteLine=deleteLine;
+  window.copyLines=copyLines; window.toggleOrigNotes=toggleOrigNotes;
   window.updateJobNote=updateJobNote; window.addShoppingItem=addShoppingItem;
   window.updateShoppingText=updateShoppingText; window.toggleShoppingDone=toggleShoppingDone;
   window.deleteShoppingRow=deleteShoppingRow; window.pickPhoto=pickPhoto;
